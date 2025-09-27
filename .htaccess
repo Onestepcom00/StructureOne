@@ -1,0 +1,6 @@
+RewriteEngine On
+
+# Rediriger toutes les requêtes qui ne correspondent pas à un fichier ou dossier existant
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
