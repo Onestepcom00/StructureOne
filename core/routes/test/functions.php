@@ -5,7 +5,10 @@
  */
 
 function test_function() {
-    return "Fonction de test exécutée avec succès";
+    /**
+     * 
+     * Extraitre le donnees du fichier json 
+     */
 }
 
 ?>
