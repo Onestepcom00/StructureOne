@@ -313,5 +313,120 @@ function env($key, $defaultValue = null) {
     return $value;
 }
 
+/**
+ * 
+ * cette fonction permet de generer un tok JWT 
+ * 
+ */
+function jwt_generate($userId){
+    /**
+     * 
+     * Recuperer le token depuis la configuration 
+     * 
+     */
+    $secret = env('API_TOKEN_SECRET') ?? API_TOKEN_SECRET; // Soit recuperer depuis le fichier .env ou soit recuperer depuis le fichier config.php
 
+    /**
+     * 
+     * 
+     * Creer une date d'expiration 
+     * 
+     * 
+     */
+    $expiry = time() + (env('API_TOKEN_EXP') ?? API_TOKEN_EXP); // Soit recuperer depuis le fichier .env ou soit recuperer depuis le fichier config.php
+
+    /**
+     * 
+     * 
+     * Creer un payload 
+     * 
+     * 
+     */
+    $payload = [
+        'uid' => $userId,
+        'exp' => $expiry
+    ];
+
+    /**
+     * 
+     * Encoder en JSON puis en base64 pour simplifier 
+     * 
+     * 
+     */
+    $token = base64_encode(json_encode($payload) . '.' . hash_hmac('sha256', $userId . $expiry , $secret));
+
+    /**
+     * 
+     * Renvoyer le token 
+     * 
+     */
+    return $token;
+}
+
+/**
+ * 
+ * 
+ * La validation du token 
+ * 
+ * 
+ */
+function jwt_validate($token){
+    /**
+     * 
+     * Recuperer la cle secrete 
+     * 
+     */
+    $secret = env('API_TOKEN_SECRET') ?? API_TOKEN_SECRET;
+
+    /**
+     * 
+     * Operation 1
+     * 
+     * 
+     */
+    $parts = explode('.', base64_decode($token));
+    if(count($parts) !== 2) return false;
+
+    /**
+     * 
+     * Operation 2
+     * 
+     */
+    $payload = json_decode($parts[0],true);
+    $signature = $parts[1] ?? '';
+
+    if(!$payload || !isset($payload['uid'], $payload['exp'])) return false;
+
+    if($payload['exp'] < time()) return false;
+
+    /**
+     * 
+     * Operation 3 
+     * 
+     * 
+     */
+    $checkSignature = hash_hmac('sha256', $payload['uid'].$payload['exp'], $secret);
+
+    /**
+     * 
+     * Operation 4
+     * 
+     * 
+     */
+    return hash_equals($checkSignature,$signature) ? $payload['uid'] : false;
+}
+
+/**
+ * 
+ * Fonction pour valider les entrees dans une requete
+ * 
+ * 
+ */
+function validate($data,$rules){
+    foreach($rules as $field => $rule){
+        if($rule === 'required' && empty($data[$field])){
+            throw new Exception("Le champ $field est requis.");
+        }
+    }
+}
 ?>
