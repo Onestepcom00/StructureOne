@@ -27,6 +27,15 @@ header('Access-Control-Allow-Methods: GET, POST , OPTIONS'); // Autoriser les me
 //header('Access-Control-Allow-Headers: Content-Type, Authorization'); // Autoriser les headers specifiques
 header('Content-Type: application/json'); // Type de contenu JSON
 
+/**
+ * 
+ * cette partie du code permet  de recuperer directement et automatiquement les autorisations http 
+ * pour valider le token , la variable $JWT_HTTP_TOKEN devra etre utiliser pour verification 
+ * 
+ */
+$authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+$JWT_HTTP_TOKEN = str_replace('Bearer ','',$authHeader);
+
 
 /**
  * 
@@ -46,5 +55,17 @@ define('BASE_CACHE','/core/cache'); // Le dossier qui va contenir les fichiers c
  * 
  */
 define('BASE_APP_DIR','/MOLOLO_PLUS/BACKEND'); // Le dossier ou se trouve l'API system
+
+
+/**
+ * 
+ * 
+ * Cle Secret pour la generation du token 
+ * 
+ * 
+ */
+define('API_TOKEN_SECRET','Exemple_key');
+define('API_TOKEN_EXP',3600); 
+
 
 ?>
