@@ -1,6 +1,6 @@
 # StructureOne - Architecture PHP
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
 ![PHP](https://img.shields.io/badge/PHP-7.4%252B-777BB4.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
@@ -27,7 +27,8 @@ Le projet est composé de **6 fichiers principaux** et **1 dossier racine**.
 
 - **config.php**  
   Contient toutes les **configurations globales** et importantes.  
-  Utilisez **des constantes** plutôt que des variables afin d’éviter des conflits.
+  Utilisez **des constantes** plutôt que des variables afin d’éviter des conflits.  
+  ⚡ Ajout : gestion automatique du token JWT via `$JWT_HTTP_TOKEN` pour la sécurité des requêtes.
 
 - **loader.php**  
   Contient toutes les **fonctions globales**.  
@@ -65,29 +66,12 @@ define('BASE_TEMPLATES','/core/templates');
 Assurez-vous d’avoir installé Node.js et ses dépendances :
 
 ```js
-const fs = require('fs');
-const path = require('path');
-const readline = require('readline');
-```
-
-Puis lancez :
-
-```bash
 node install.js
 ```
 
 ### Via Python 3
 
 Assurez-vous d’avoir Python 3 et ces dépendances :
-
-```python
-import os
-import re
-import datetime
-import sys
-```
-
-Puis lancez :
 
 ```bash
 python3 install.py
@@ -124,7 +108,7 @@ Créez simplement un dossier `test` dans `/core/routes/` avec :
 
 ## 🛠️ Fonctions globales
 
-### `loadEnv()`
+### `loadEnv()`  
 Charge automatiquement les variables du fichier `.env`.  
 
 ### `api_response($status, $message = null, $data = null)`  
@@ -145,6 +129,63 @@ Récupère une variable définie dans `.env` :
 $db_host = env('DB_HOST');
 ```
 
+### 🔑 `jwt_generate($id)`  
+Génère rapidement un token **JWT** à partir d’un identifiant unique.  
+- Entrée : `id`  
+- Sortie : `token JWT`  
+- Repose sur les constantes :  
+  - `API_TOKEN_SECRET`  
+  - `API_TOKEN_EXP` (expiration)  
+
+### 🔒 `jwt_validate($token)`  
+Valide un **token JWT** et retourne l’ID associé.  
+- Entrée : `token`  
+- Sortie : `id` si valide, sinon erreur.  
+- Repose aussi sur `API_TOKEN_SECRET` et `API_TOKEN_EXP`.  
+
+### 🛡️ `validate($data, $rules)`  
+Vérifie strictement les entrées pour éviter les injections arbitraires.  
+
+Exemple :  
+
+```php
+validate($_POST,[
+   "username" => "required",
+   "password" => "required"
+]);
+```
+
+Résultat : bloque automatiquement les champs invalides ou manquants.  
+
+---
+
+## 🔑 Gestion automatique du JWT via HTTP Headers
+
+Dans `config.php`, une nouvelle variable est disponible :  
+
+```php
+$authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+$JWT_HTTP_TOKEN = str_replace('Bearer ', '', $authHeader);
+```
+
+Vous pouvez utiliser **globalement** `$JWT_HTTP_TOKEN` dans vos fonctions pour vérifier un token :  
+
+```php
+function test(){
+    global $JWT_HTTP_TOKEN;
+
+    $decoded = jwt_validate($JWT_HTTP_TOKEN);
+
+    if($decoded){
+        // Le token est valide
+    }else{
+        // Le token est invalide
+    }
+}
+```
+
+Cette pratique rend l’API **beaucoup plus sécurisée** et facilite l’intégration avec des clients externes.  
+
 ---
 
 ## 🔄 Mise à jour des routes
@@ -153,11 +194,6 @@ Pour ajouter une nouvelle API :
 1. Créez un dossier dans `/core/routes/` au nom de la route.  
 2. Ajoutez vos fichiers `index.php` et `functions.php`.  
 3. Le système détectera automatiquement cette route.  
-
-Si la mise à jour ajoute de nouvelles fonctions globales ou configurations, pensez à les placer dans :  
-- `config.php`  
-- `loader.php`  
-- `.env` (si nécessaire)  
 
 ---
 
@@ -175,4 +211,3 @@ Développé pour simplifier la vie des développeurs et répondre aux besoins de
 ## 📜 Licence
 
 Ce projet est distribué sous licence **MIT**.
-
