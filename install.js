@@ -463,6 +463,32 @@ if($_SERVER['REQUEST_METHOD'] === 'GET'){
         }
     }
 
+    cleanupInstallationFiles() {
+        /** Supprimer les fichiers d'installation après une installation réussie */
+        this.printStep("Nettoyage des fichiers d'installation");
+        console.log();
+
+        const installationFiles = ['install.js', 'install.py'];
+        let allDeleted = true;
+
+        for (const file of installationFiles) {
+            if (fs.existsSync(file)) {
+                try {
+                    fs.unlinkSync(file);
+                    this.printSuccess(`Fichier supprimé: ${file}`);
+                } catch (error) {
+                    this.printWarning(`Impossible de supprimer ${file}: ${error.message}`);
+                    allDeleted = false;
+                }
+            } else {
+                this.printSuccess(`Fichier non trouvé (déjà supprimé): ${file}`);
+            }
+        }
+
+        console.log();
+        return allDeleted;
+    }
+
     async runInstallation() {
         /** Exécuter l'installation complète */
         this.printHeader();
@@ -498,16 +524,29 @@ if($_SERVER['REQUEST_METHOD'] === 'GET'){
             { name: "Mise à jour des fichiers PHP", func: () => this.updatePhpFiles() },
             { name: "Création du fichier .env", func: () => this.createEnvFile() },
             { name: "Création de la structure de dossiers", func: () => this.createDirectoryStructure() },
-            { name: "Création d'un exemple de route", func: () => this.createExampleRoute() }
+            { name: "Création d'un exemple de route", func: () => this.createExampleRoute() },
+            { name: "Nettoyage des fichiers d'installation", func: () => this.cleanupInstallationFiles() }
         ];
+
+        let installationSuccess = true;
 
         for (const step of steps) {
             this.printStep(step.name);
             if (!step.func()) {
                 this.printError(`Échec de l'étape: ${step.name}`);
-                this.rl.close();
-                return;
+                installationSuccess = false;
+                // On continue l'exécution même si une étape échoue, sauf pour les étapes critiques
+                if (step.name === "Création de la structure de dossiers") {
+                    this.rl.close();
+                    return;
+                }
             }
+        }
+
+        if (!installationSuccess) {
+            this.printError("Installation terminée avec des erreurs");
+            this.rl.close();
+            return;
         }
 
         // Afficher le résumé
@@ -534,6 +573,8 @@ if($_SERVER['REQUEST_METHOD'] === 'GET'){
         console.log("4. Pour tester JWT:");
         console.log("   - Générer un token: /api/test?id=123");
         console.log("   - Valider un token: /api/test?token=VOTRE_TOKEN");
+        console.log();
+        console.log("✅ Les fichiers d'installation ont été supprimés automatiquement");
         console.log("=".repeat(60));
 
         this.rl.close();
