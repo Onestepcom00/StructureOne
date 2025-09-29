@@ -27,17 +27,64 @@ function api_response($status,$message = null,$data = null){
      * Creer un tableau des reponses de l'API , chaque status equivaut a une reponses de l'API 
      * 
      */
-    $_response = [
-        200 => ["success",$message ?? "Request was successful."],
-        404 => ["error",$message ?? "The requested resource was not found."],
-        400 => ["error",$message ?? "Bad request. Please check your input."],
-        500 => ["error",$message ?? "Internal server error. Please try again later."],
-        401 => ["error",$message ?? "Unauthorized access. Please provide valid credentials."],
-        403 => ["error",$message ?? "Forbidden access. You do not have permission to access this resource."],
-        422 => ["error",$message ?? "Unprocessable entity. The request was well-formed but was unable to be followed due to semantic errors."],
-        429 => ["error",$message ?? "Too many requests. Please slow down your request rate."],
-        503 => ["error",$message ?? "Service unavailable. The server is currently unable to handle the request due to temporary overload or maintenance."]
-    ];
+$_response = [
+    // 2xx Success
+    200 => ["success", $message ?? "Request was successful."],
+    201 => ["success", $message ?? "Resource created successfully."],
+    202 => ["success", $message ?? "Request accepted for processing."],
+    204 => ["success", $message ?? "Request successful, no content to return."],
+    
+    // 3xx Redirection
+    301 => ["redirect", $message ?? "Resource has been moved permanently."],
+    302 => ["redirect", $message ?? "Resource has been moved temporarily."],
+    304 => ["redirect", $message ?? "Resource not modified."],
+    307 => ["redirect", $message ?? "Temporary redirect."],
+    308 => ["redirect", $message ?? "Permanent redirect."],
+    
+    // 4xx Client Errors
+    400 => ["error", $message ?? "Bad request. Please check your input."],
+    401 => ["error", $message ?? "Unauthorized access. Please provide valid credentials."],
+    402 => ["error", $message ?? "Payment required."],
+    403 => ["error", $message ?? "Forbidden access. You do not have permission to access this resource."],
+    404 => ["error", $message ?? "The requested resource was not found."],
+    405 => ["error", $message ?? "Method not allowed."],
+    406 => ["error", $message ?? "Not acceptable. The server cannot produce a response matching the list of acceptable values."],
+    407 => ["error", $message ?? "Proxy authentication required."],
+    408 => ["error", $message ?? "Request timeout."],
+    409 => ["error", $message ?? "Conflict. The request could not be completed due to a conflict with the current state of the resource."],
+    410 => ["error", $message ?? "Gone. The requested resource is no longer available."],
+    411 => ["error", $message ?? "Length required."],
+    412 => ["error", $message ?? "Precondition failed."],
+    413 => ["error", $message ?? "Payload too large."],
+    414 => ["error", $message ?? "URI too long."],
+    415 => ["error", $message ?? "Unsupported media type."],
+    416 => ["error", $message ?? "Range not satisfiable."],
+    417 => ["error", $message ?? "Expectation failed."],
+    418 => ["error", $message ?? "I'm a teapot."],
+    421 => ["error", $message ?? "Misdirected request."],
+    422 => ["error", $message ?? "Unprocessable entity. The request was well-formed but was unable to be followed due to semantic errors."],
+    423 => ["error", $message ?? "Locked. The resource that is being accessed is locked."],
+    424 => ["error", $message ?? "Failed dependency."],
+    425 => ["error", $message ?? "Too early."],
+    426 => ["error", $message ?? "Upgrade required."],
+    428 => ["error", $message ?? "Precondition required."],
+    429 => ["error", $message ?? "Too many requests. Please slow down your request rate."],
+    431 => ["error", $message ?? "Request header fields too large."],
+    451 => ["error", $message ?? "Unavailable for legal reasons."],
+    
+    // 5xx Server Errors
+    500 => ["error", $message ?? "Internal server error. Please try again later."],
+    501 => ["error", $message ?? "Not implemented. The server does not support the functionality required to fulfill the request."],
+    502 => ["error", $message ?? "Bad gateway."],
+    503 => ["error", $message ?? "Service unavailable. The server is currently unable to handle the request due to temporary overload or maintenance."],
+    504 => ["error", $message ?? "Gateway timeout."],
+    505 => ["error", $message ?? "HTTP version not supported."],
+    506 => ["error", $message ?? "Variant also negotiates."],
+    507 => ["error", $message ?? "Insufficient storage."],
+    508 => ["error", $message ?? "Loop detected."],
+    510 => ["error", $message ?? "Not extended."],
+    511 => ["error", $message ?? "Network authentication required."]
+];
 
     /**
      * 
@@ -429,4 +476,358 @@ function validate($data,$rules){
         }
     }
 }
+
+/**
+ * 
+ * Authentification rapide avec JWT : Composant 
+ * 
+ */
+function JWTAuth(){
+    /**
+     * 
+     * Recuperer la fonction global 
+     * 
+     */
+    global $JWT_HTTP_TOKEN;
+
+    /**
+     * 
+     * Valider le token pour recuperer l'ID de l'utilisateur 
+     * 
+     */
+    $userId = jwt_validate($JWT_HTTP_TOKEN);
+
+  
+}
+
+/**
+ * 
+ * 
+ * ***********
+ * Composant :  BASE DES DONNEES 
+ * ***********
+ * 
+ * 
+ */
+
+/**
+ * ********************
+ * Composant : BASE DES DONNEES
+ * ********************
+ */
+
+/**
+ * Gestion centralisée des erreurs
+ * 
+ * @param string $message
+ * @param Exception|null $exception
+ * 
+ */
+function db_error(string $message, ?Exception $exception = null) {
+    /**
+     * 
+     * Lire le mode debug depuis .env
+     * 
+     */
+    $debug = env('DEBUG_MODE') === 'true' || env('DEBUG_MODE') === true;
+
+    /**
+     * 
+     * 
+     * Construire le message d'erreur complet si debug activé
+     * 
+     * 
+     */
+    $errorMessage = $debug && $exception ? $message . ' - ' . $exception->getMessage() : $message;
+
+    /* Optionnel : logger dans un fichier
+    $logFile = BASE_LOGS . '/db_errors.log';
+    $logContent = "[" . date("Y-m-d H:i:s") . "] " . $errorMessage . "\n";
+    file_put_contents($logFile, $logContent, FILE_APPEND);
+    */
+
+    /**
+     * 
+     * Retour JSON pour API
+     * 
+     */
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: application/json; charset=utf-8');
+    }
+
+    /**
+     * 
+     * Ici nous ne pouvons pas utiliser api_response car on risquerai de creer des conflits 
+     * 
+     */
+    echo json_encode([
+        'status' => 'error',
+        'message' => $errorMessage
+    ], JSON_UNESCAPED_UNICODE);
+
+    /**
+     * 
+     * 
+     * Stoppe proprement l'exécution pour éviter d'appeler db_connect() sur null
+     * 
+     */
+    exit;
+}
+
+/**
+ * 
+ * Connexion à la base de données
+ * @return PDO
+ * 
+ * 
+ */
+function db_connect(): PDO {
+    /**
+     * 
+     * Mettre la variable $pdo en static 
+     * 
+     * 
+     */
+    static $pdo = null;
+
+
+    /**
+     *  
+     * 
+     * Verifier si la connexion existe 
+     * 
+     * 
+     */
+    if ($pdo === null) {
+        /**
+         * 
+         * DSN complet
+         * 
+         * 
+         */
+        $host = env('DB_HOST') ?? 'localhost';
+        $port = env('DB_PORT') ?? 3306;
+        $dbname = env('DB_NAME') ?? 'test';
+        $user = env('DB_USER') ?? 'root';
+        $pass = env('DB_PASS') ?? '';
+
+        /**
+         * 
+         * 
+         * MEttre en place 
+         * 
+         * 
+         */
+        $dsn = "mysql:host={$host};port={$port};dbname={$dbname};charset=utf8mb4";
+
+        /**
+         * 
+         * Essayer d'executer la requete 
+         * 
+         * 
+         */
+        try {
+            $pdo = new PDO($dsn, $user, $pass, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            ]);
+        } catch (PDOException $e) {
+            /**
+             * 
+             * Gerer l'erreur directement
+             * 
+             */
+            db_error("Erreur de connexion à la base de données", $e);
+        }
+    }
+
+    /**
+     * 
+     * Renvoyer la conexion
+     * 
+     */
+    return $pdo;
+}
+
+/**
+ * 
+ * 
+ * SELECT multiple lignes
+ * 
+ * 
+ */
+function db_select(string $sql, array $params = []): array {
+    /**
+     * 
+     * Essayer d'executer la requete 
+     * 
+     * 
+     */
+    try {
+        /**
+         * 
+         * Preparer la requete 
+         * 
+         */
+        $stmt = db_connect()->prepare($sql);
+
+        /**
+         * 
+         * 
+         * Executer la requete 
+         * 
+         * 
+         */
+        $stmt->execute($params);
+
+        /**
+         * 
+         * fetchAll
+         * 
+         * 
+         */
+        return $stmt->fetchAll();
+    } catch (PDOException $e) {
+        /**
+         * 
+         * gerer mieux les erreurs 
+         * 
+         */
+        db_error("Erreur SELECT", $e);
+    }
+}
+
+/**
+ * 
+ * 
+ * SELECT une seule ligne
+ * 
+ * 
+ */
+function db_find(string $sql, array $params = []): ?array {
+    /**
+     * 
+     * Essayer d'executer la requete 
+     * 
+     */
+    try {
+        /**
+         * 
+         * Preparer la requete 
+         * 
+         */
+        $stmt = db_connect()->prepare($sql);
+
+        /**
+         * 
+         * Executer la requete 
+         * 
+         */
+        $stmt->execute($params);
+
+        /**
+         * 
+         * fecth
+         * 
+         */
+        return $stmt->fetch() ?: null;
+    } catch (PDOException $e) {
+        /**
+         * 
+         * gerer mieux les erreurs 
+         * 
+         */
+        db_error("Erreur SELECT ONE", $e);
+    }
+}
+
+/**
+ * 
+ * 
+ * INSERT / UPDATE / DELETE
+ * 
+ * 
+ */
+function db_execute(string $sql, array $params = []): bool {
+    /**
+     * 
+     * Essayer d'executer la requete 
+     * 
+     */
+    try {
+        /**
+         * 
+         * Preparer la requete
+         * 
+         */
+        $stmt = db_connect()->prepare($sql);
+
+        /**
+         * 
+         * Executer la requete 
+         * 
+         */
+        return $stmt->execute($params);
+    } catch (PDOException $e) {
+        /**
+         * 
+         * Gerer la reponse 
+         * 
+         */
+        db_error("Erreur EXECUTE", $e);
+    }
+}
+
+/**
+ * 
+ * 
+ * Dernier ID inséré
+ * 
+ * 
+ */
+function db_last_id(): string {
+    /**
+     * 
+     * Essayer d'executer la requete 
+     * 
+     * 
+     */
+    try {
+        /**
+         * 
+         * Renvoyer le dernier ID 
+         * 
+         */
+        return db_connect()->lastInsertId();
+    } catch (PDOException $e) {
+        /**
+         * 
+         * Gerer mieux les erreurs
+         * 
+         */
+        db_error("Impossible de récupérer le dernier ID", $e);
+    }
+}
+
+/**
+ * 
+ * Sécurisation des entrées
+ * 
+ */
+function db_escape(string $input): string {
+    return htmlspecialchars(strip_tags($input));
+}
+
+/**
+ * 
+ * 
+ * Hash du mot de passe
+ * 
+ * 
+ */
+function db_hash(string $password): string {
+    return password_hash($password, PASSWORD_BCRYPT);
+}
+
 ?>
