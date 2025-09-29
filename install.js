@@ -218,6 +218,15 @@ class ProjectInstaller {
         console.log();
 
         try {
+            // Vérifier si le fichier .env existe déjà
+            if (fs.existsSync('.env')) {
+                const overwrite = this.question("Le fichier .env existe déjà. Voulez-vous l'écraser? (oui/non)", "non");
+                if (!['oui', 'yes', 'y', 'o'].includes(overwrite.toLowerCase())) {
+                    this.printWarning("Fichier .env conservé - aucune modification");
+                    return true;
+                }
+            }
+
             let envContent = "# Fichier de configuration environnementale\n";
             envContent += "# Généré automatiquement par install.js\n";
             envContent += `# Projet: ${this.project_name}\n`;
@@ -296,11 +305,20 @@ class ProjectInstaller {
 
         const exampleRouteDir = 'core/routes/test';
 
+        // Vérifier si le dossier existe déjà
         if (!fs.existsSync(exampleRouteDir)) {
-            fs.mkdirSync(exampleRouteDir, { recursive: true });
+            try {
+                fs.mkdirSync(exampleRouteDir, { recursive: true });
+                this.printSuccess(`Dossier créé: ${exampleRouteDir}`);
+            } catch (error) {
+                this.printError(`Erreur création dossier ${exampleRouteDir}: ${error.message}`);
+                return false;
+            }
+        } else {
+            this.printSuccess(`Dossier existe déjà: ${exampleRouteDir}`);
         }
 
-        // Créer functions.php pour l'exemple
+        // Créer functions.php pour l'exemple avec le nouveau code
         const functionsContent = `<?php
 
 /**
@@ -308,39 +326,132 @@ class ProjectInstaller {
  */
 
 function test_function() {
-    return "Fonction de test exécutée avec succès";
+    /**
+     * 
+     * Extraitre le donnees du fichier json 
+     */
 }
 
 ?>
 `;
 
-        // Créer index.php pour l'exemple
+        // Créer index.php pour l'exemple avec le nouveau code
         const indexContent = `<?php
 
 /**
- * Route de test - Exemple d'implémentation
+ * 
+ * ceci est un exemple complet qui utilises les fonctions globaux 
+ * 
  */
 
-// Inclure les fonctions spécifiques à cette route
-require 'functions.php';
 
-// Exemple de traitement de requête
-if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $result = test_function();
-    echo api_response(200, "Route test fonctionne", [
-        'message' => $result,
-        'timestamp' => date('Y-m-d H:i:s')
-    ]);
-} else {
-    echo api_response(405, "Méthode non autorisée");
+/**
+ * 
+ * Recuperer les requetes GET 
+ * 
+ */
+if($_SERVER['REQUEST_METHOD'] === 'GET'){
+
+    /**
+     * 
+     * Generer un token JWT 
+     * 
+     */
+    if(isset($_GET['id'])){
+        /**
+         * 
+         * generer le token 
+         * 
+         */
+        $token = jwt_generate($_GET['id']);
+
+        /**
+         * 
+         * Creer une reponse HTTP
+         * 
+         */
+        $re = [
+            "jwt_token" => $token
+        ];
+
+        /**
+         * 
+         * Afficher le token 
+         * 
+         */
+        echo api_response(200, "Token généré avec succès", $re);
+    }
+    elseif(isset($_GET['token'])){
+        /**
+         * 
+         * Recuperer le token et verifier sa validiter 
+         * 
+         */
+        $decoded = jwt_validate($_GET['token']);
+
+        if($decoded){
+            /**
+             * 
+             * Creer un tableau 
+             * 
+             */
+            $re = [
+                "jwt_decoded" => $decoded
+            ];
+
+            /**
+             * 
+             * Le code sera traiter ici car le token est valide 
+             * 
+             */
+            echo api_response(200, "Token valide", $re);
+        }else{
+            /**
+             * 
+             * Le token n'est pas valide 
+             * 
+             */
+            echo api_response(401, "Token invalide", null);
+        }
+    }
+    else{
+        /**
+         * 
+         * Aucun prametre trouver 
+         * 
+         */
+        echo api_response(400, "Aucun paramètre 'id' ou 'token' trouvé", null);
+    }
+}else{
+    /**
+     * 
+     * Renvoyer une erreur si la methode n'est pas autoriser
+     * 
+     */
+    echo api_response(405, "Méthode non autorisée", null);
 }
 
 ?>
 `;
 
         try {
-            fs.writeFileSync(path.join(exampleRouteDir, 'functions.php'), functionsContent);
-            fs.writeFileSync(path.join(exampleRouteDir, 'index.php'), indexContent);
+            // Vérifier si les fichiers existent déjà
+            const functionsFile = path.join(exampleRouteDir, 'functions.php');
+            const indexFile = path.join(exampleRouteDir, 'index.php');
+
+            if (fs.existsSync(functionsFile)) {
+                this.printWarning(`Fichier existe déjà: ${functionsFile} - conservation du fichier existant`);
+            } else {
+                fs.writeFileSync(functionsFile, functionsContent);
+                this.printSuccess(`Fichier créé: ${functionsFile}`);
+            }
+
+            if (fs.existsSync(indexFile)) {
+                this.printWarning(`Fichier existe déjà: ${indexFile} - conservation du fichier existant`);
+            } else {
+                fs.writeFileSync(indexFile, indexContent);
+                this.printSuccess(`Fichier créé: ${indexFile}`);
+            }
             
             this.printSuccess("Exemple de route créé: /api/test");
             console.log();
@@ -420,6 +531,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         console.log("1. Configurer votre serveur web");
         console.log("2. Créer la base de données si nécessaire");
         console.log("3. Tester l'API avec l'URL: /api/test");
+        console.log("4. Pour tester JWT:");
+        console.log("   - Générer un token: /api/test?id=123");
+        console.log("   - Valider un token: /api/test?token=VOTRE_TOKEN");
         console.log("=".repeat(60));
 
         this.rl.close();
