@@ -206,7 +206,63 @@ function test(){
 }
 ```
 
-👉 Cette pratique rend l’API **très sécurisée** et simple à maintenir.  
+👉 Cette pratique rend l’API **très sécurisée** et simple à maintenir. 
+
+
+### 🚀 Améliorations du système d'inscription
+
+Nous avons récemment ajouté un **module complet pour la création sécurisée d'utilisateurs**. Voici les points clés :
+
+- Vérification automatique si l'utilisateur **existe déjà** dans la base de données.
+- Gestion des erreurs robustes avec `db_find()` et `db_execute()`.
+- Retour JSON clair pour informer le client si l'utilisateur existe ou si la création est réussie.
+- Génération automatique d'un **jeton JWT** après création.
+- Utilisation des nouvelles fonctions globales `db_connect()`, `db_find()`, `db_execute()`, et `db_last_id()`.
+- Gestion du hashage de mot de passe via `db_hash()`.
+
+### 🔍 Exemple rapide d'utilisation
+
+```php
+// Créer un nouvel utilisateur
+create_user('john', db_hash('motdepasse123'));
+
+// Retour si succès :
+// {
+//     "status": 201,
+//     "message": "Utilisateur créé avec succès",
+//     "data": {"jwt_token": "<token>"}
+// }
+
+// Retour si utilisateur existant :
+// {
+//     "status": 409,
+//     "message": "L'utilisateur existe déjà",
+//     "data": null
+// }
+```
+
+### 📂 Où trouver le code
+
+Le code de base pour créer un système d'inscription sécurisé est disponible dans :
+
+```
+/core/routes/signup/
+```
+
+- `index.php` : logique principale pour créer l'utilisateur et générer le JWT.
+- `functions.php` : fonctions utilitaires pour la base de données et la validation.
+
+> Vous pouvez consulter ce dossier pour comprendre la logique, réutiliser ou adapter le code pour d'autres routes.
+
+### ⚡ Notes importantes
+
+- Les fonctions globales `db_connect()`, `db_find()`, `db_execute()` et `db_last_id()` assurent maintenant que la connexion à la base de données est vérifiée avant toute requête, ce qui empêche les erreurs critiques si la base de données n'est pas disponible.
+- `DEBUG_MODE` dans `.env` est pris en compte pour afficher ou cacher les messages détaillés d'erreur.
+- La création d'utilisateur est maintenant **conditionnée par l'existence dans la base** et ne peut plus créer un doublon.
+
+Ces mises à jour permettent de créer rapidement un système d'inscription sécurisé et plug-and-play dans StructureOne.
+
+
 
 ---
 
