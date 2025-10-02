@@ -274,7 +274,55 @@ function test(){
 
 ### 🚀 Améliorations du système d'inscription
 
-#### 1. Base des donnees : 
+### GERER LES METHODES DE REQUETES AUTORISER 
+
+Nous avons enormement simplifier les choses en ajoutant des fonctions globaux , pour vous permettre de designer les methodes autoriser dans vos routes.
+nous avons ajouter la fonction `require_method()` et `require_method_in`
+la premiere fonction prends en charge uniquement une seule methode et la deuxieme peut prendre en charge plusieurs methode.
+
+**EXEMPLE 1:**
+```php
+
+/**
+ * EXEMPLE 1: Méthode POST requise
+ * Si la méthode n'est pas POST, le script s'arrête immédiatement
+ */
+require_method('POST');
+
+// Le code suivant ne s'exécutera JAMAIS si la méthode n'est pas POST
+echo db_escape($_GET['test']); // ← Jamais exécuté en cas d'erreur
+```
+**EXEMPLE 2:**
+
+```php
+/**
+ * EXEMPLE 2: Méthodes multiples autorisées
+ */
+require_method_in(['GET', 'POST']);
+
+// Le code suivant ne s'exécutera que si la méthode est GET ou POST
+$data = $_GET['id'] ?? $_POST['id'] ?? null;
+echo api_response(200, "Succès", $data);
+```
+
+**EXEMPLE 3:**
+
+```php
+/**
+ * EXEMPLE 3: Avec réponse d'erreur personnalisée
+ */
+require_method('POST', function() {
+    http_response_code(405);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'error' => true,
+        'message' => 'Méthode non autorisée pour cette action'
+    ]);
+    // Pas besoin de exit ici, il est déjà dans la fonction require_method
+});
+
+```
+#### BASE DES DONNEES : 
 
 Nous avons mis en place un certain nombre des fonctions qui permet d'effectuer des operations SQL (actuellement uniquement MySQL pris en charge).
 
