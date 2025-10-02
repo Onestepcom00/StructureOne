@@ -828,4 +828,89 @@ function db_hash(string $password): string {
     return password_hash($password, PASSWORD_BCRYPT);
 }
 
+
+
+/**
+ * PRISE EN CHARGE DE LA GESTION DES METHODES 
+ * 
+ * Ces fonctions vérifient la méthode HTTP et bloquent l'exécution
+ * si la méthode n'est pas autorisée
+ */
+
+
+/**
+ * Vérifie la méthode et renvoie une erreur si non conforme
+ * 
+ * @param string $expectedMethod La méthode HTTP attendue (GET, POST, etc.)
+ * @param mixed $errorResponse Réponse d'erreur personnalisée (optionnel)
+ * @return bool Retourne true si la méthode est conforme
+ */
+function require_method($expectedMethod, $errorResponse = null) {
+    $expectedMethod = strtoupper($expectedMethod);
+    
+    if ($_SERVER['REQUEST_METHOD'] !== $expectedMethod) {
+        if ($errorResponse === null) {
+            /**
+             * Envoyer une réponse d'erreur par défaut
+             */
+            header('Allow: ' . $expectedMethod);
+            echo api_response(405, "Cette endpoint nécessite la méthode $expectedMethod", null);
+        } else {
+            if (is_callable($errorResponse)) {
+                $errorResponse();
+            } else {
+                echo $errorResponse;
+            }
+        }
+        
+        /**
+         * ARRÊTER IMMÉDIATEMENT L'EXÉCUTION DU SCRIPT
+         * pour éviter que le code suivant soit exécuté
+         */
+        exit;
+    }
+    
+    return true;
+}
+
+/**
+ * Vérifie que l'une des méthodes est utilisée
+ * 
+ * @param array|string $expectedMethods Les méthodes HTTP autorisées
+ * @param mixed $errorResponse Réponse d'erreur personnalisée (optionnel)
+ * @return bool Retourne true si une des méthodes est conforme
+ */
+function require_method_in($expectedMethods, $errorResponse = null) {
+    if (is_string($expectedMethods)) {
+        $expectedMethods = explode(',', $expectedMethods);
+    }
+    
+    $expectedMethods = array_map('strtoupper', $expectedMethods);
+    $currentMethod = $_SERVER['REQUEST_METHOD'];
+    
+    if (!in_array($currentMethod, $expectedMethods)) {
+        if ($errorResponse === null) {
+            /**
+             * Renvoyer une réponse d'erreur par défaut
+             */
+            header('Allow: ' . implode(', ', $expectedMethods));
+            echo api_response(405, "Méthodes autorisées: " . implode(', ', $expectedMethods), null);
+        } else {
+            if (is_callable($errorResponse)) {
+                $errorResponse();
+            } else {
+                echo $errorResponse;
+            }
+        }
+        
+        /**
+         * ARRÊTER IMMÉDIATEMENT L'EXÉCUTION DU SCRIPT
+         * pour éviter que le code suivant soit exécuté
+         */
+        exit;
+    }
+    
+    return true;
+}
+
 ?>
