@@ -360,108 +360,115 @@ function env($key, $defaultValue = null) {
     return $value;
 }
 
+
 /**
+ * Cette fonction permet de générer un token JWT de manière dynamique
  * 
- * cette fonction permet de generer un tok JWT 
- * 
+ * @param mixed $data - Peut être un ID simple ou un tableau de données arbitraires
+ * @return string - Le token JWT généré (URL-safe)
  */
-function jwt_generate($userId){
+function jwt_generate($data) {
     /**
-     * 
-     * Recuperer le token depuis la configuration 
-     * 
+     * Récupérer le token depuis la configuration 
      */
-    $secret = env('API_TOKEN_SECRET') ?? API_TOKEN_SECRET; // Soit recuperer depuis le fichier .env ou soit recuperer depuis le fichier config.php
+    $secret = env('API_TOKEN_SECRET') ?? API_TOKEN_SECRET;
 
     /**
-     * 
-     * 
-     * Creer une date d'expiration 
-     * 
-     * 
+     * Créer une date d'expiration 
      */
-    $expiry = time() + (env('API_TOKEN_EXP') ?? API_TOKEN_EXP); // Soit recuperer depuis le fichier .env ou soit recuperer depuis le fichier config.php
+    $expiry = time() + (env('API_TOKEN_EXP') ?? API_TOKEN_EXP);
 
     /**
-     * 
-     * 
-     * Creer un payload 
-     * 
-     * 
+     * Préparer le payload selon le type de données
      */
-    $payload = [
-        'uid' => $userId,
-        'exp' => $expiry
-    ];
+    if (is_array($data)) {
+        // Si c'est un tableau, on l'utilise TELL QUEL sans modification
+        $payload = $data;
+    } else {
+        // Si c'est un simple élément, on crée un payload minimal
+        $payload = [
+            'uid' => $data
+        ];
+    }
 
     /**
-     * 
-     * Encoder en JSON puis en base64 pour simplifier 
-     * 
-     * 
+     * Ajouter l'expiration au payload (obligatoire pour JWT)
      */
-    $token = base64_encode(json_encode($payload) . '.' . hash_hmac('sha256', $userId . $expiry , $secret));
+    $payload['exp'] = $expiry;
 
     /**
-     * 
+     * Encoder en JSON puis en base64 URL-safe
+     */
+    $encodedPayload = base64url_encode(json_encode($payload));
+    $signature = hash_hmac('sha256', $encodedPayload . $expiry, $secret);
+    
+    $token = $encodedPayload . '.' . base64url_encode($signature);
+
+    /**
      * Renvoyer le token 
-     * 
      */
     return $token;
 }
 
 /**
+ * Fonction pour encoder en base64 URL-safe
+ * Supprime les = de padding et remplace les caractères problématiques
+ */
+function base64url_encode($data) {
+    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+}
+
+/**
+ * Fonction pour décoder le base64 URL-safe
+ */
+function base64url_decode($data) {
+    return base64_decode(str_pad(strtr($data, '-_', '+/'), strlen($data) % 4, '=', STR_PAD_RIGHT));
+}
+
+/**
+ * Cette fonction permet de vérifier et décoder un token JWT
  * 
- * 
- * La validation du token 
- * 
+ * @param string $token - Le token JWT à vérifier (URL-safe)
+ * @return mixed - Les données du payload ou false si invalide
  * 
  */
-function jwt_validate($token){
-    /**
-     * 
-     * Recuperer la cle secrete 
-     * 
-     */
+function jwt_validate($token) {
     $secret = env('API_TOKEN_SECRET') ?? API_TOKEN_SECRET;
-
-    /**
-     * 
-     * Operation 1
-     * 
-     * 
-     */
-    $parts = explode('.', base64_decode($token));
-    if(count($parts) !== 2) return false;
-
-    /**
-     * 
-     * Operation 2
-     * 
-     */
-    $payload = json_decode($parts[0],true);
-    $signature = $parts[1] ?? '';
-
-    if(!$payload || !isset($payload['uid'], $payload['exp'])) return false;
-
-    if($payload['exp'] < time()) return false;
-
-    /**
-     * 
-     * Operation 3 
-     * 
-     * 
-     */
-    $checkSignature = hash_hmac('sha256', $payload['uid'].$payload['exp'], $secret);
-
-    /**
-     * 
-     * Operation 4
-     * 
-     * 
-     */
-    return hash_equals($checkSignature,$signature) ? $payload['uid'] : false;
+    
+    // Séparer le payload et la signature
+    $parts = explode('.', $token);
+    
+    if (count($parts) !== 2) {
+        return false;
+    }
+    
+    list($encodedPayload, $encodedSignature) = $parts;
+    
+    // Décoder le payload avec base64 URL-safe
+    $payloadJson = base64url_decode($encodedPayload);
+    $payload = json_decode($payloadJson, true);
+    
+    if (!$payload || !isset($payload['exp'])) {
+        return false;
+    }
+    
+    // Vérifier l'expiration
+    if ($payload['exp'] < time()) {
+        return false;
+    }
+    
+    // Vérifier la signature
+    $expectedSignature = hash_hmac('sha256', $encodedPayload . $payload['exp'], $secret);
+    $signature = base64url_decode($encodedSignature);
+    
+    if (!hash_equals($expectedSignature, $signature)) {
+        return false;
+    }
+    
+    // Retourner les données UTILISATEUR
+    return $payload;
 }
+
 
 /**
  * 
