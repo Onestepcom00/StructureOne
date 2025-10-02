@@ -274,6 +274,101 @@ function test(){
 
 ### 🚀 Améliorations du système d'inscription
 
+#### 1. Base des donnees : 
+
+Nous avons mis en place un certain nombre des fonctions qui permet d'effectuer des operations SQL (actuellement uniquement MySQL pris en charge).
+
+1.**Rechercher un exemple dans la base des donnees** `db_find()`:
+
+Cette fonction prends en entrer deux elements , la requete SQL comme premier element , puis les elements a verifier comme deuxieme element .
+
+```php
+<?php
+    // variable 
+    $element_a_verifier = "mon_mail"; // dans la colonne *admin_email* dans la table *admin* pour mon cas
+    /**
+     * 
+     * verifier si l'utilisateur existe deja 
+     * 
+     */
+    $admin_exist = db_find("SELECT * FROM admin WHERE admin_email = ?",[
+        $element_a_verifier
+    ]);
+
+    /**
+     * 
+     * Verifier si l'admin existe 
+     * 
+     */
+    if($admin_exist){
+        /**
+         * 
+         * Renvoyer une erreur car l'admin existe deja 
+         * 
+         */
+        echo api_response(409,"Cette adresse mail existe deja",null);
+        return; // Pour bloquer la suite de l'execution
+    }else{
+      /** Element existant dans la base des donnees **/
+    }
+?>
+```
+
+2.**Executer la requete SQL** : `db_execute()`
+
+Cette fonction prends en entrer deux , la requete SQL et les donnees e inserer .
+
+```php
+<?php
+  /**
+  * 
+  * Creer l'admin :  Adaptez ce code selon votre base des donnees et selon vos besoins
+  * 
+  */
+  db_execute("INSERT INTO admin (admin_name,admin_email,admin_password) VALUES (?,?,?)",[
+      $_admin['name'],$_admin['email'],$_admin['password']
+  ]);
+?>
+```
+
+3.**Recuperer le dernier id enregistrer** : `db_last_id()`
+
+Cette operation doit etre traiter apres , une requete SQL comme vous auriez pu le faire d'habitude.
+
+```php
+<?php
+// Operation SQL recente 
+// Recuperer le dernier id
+ $_last_id = db_last_id();
+?>
+```
+
+4.**Hasher le mot de passe** : `db_hash()`
+
+Cette fonction prends en entrer un element *string* puis le convertit en *hash* pour un mot de passe 
+
+```php
+<?php
+// String 
+$password = "hello";
+// hasher 
+echo db_hash($password);
+?>
+```
+
+5.**Filtrer les entrees** : `db_escape()`
+
+cette fonction permet de filtrer les entrees pour se proteger contre les attaques XSS
+
+```php
+<?php
+// Element a filtrer : cas d'une attaque XSS 
+$form = "<h1>Mon nom</h1>";
+// Affcher l'element filtrer
+echo db_escape($form);
+?>
+```
+
 Nous avons récemment ajouté un **module complet pour la création sécurisée d'utilisateurs**. Voici les points clés :
 
 - Vérification automatique si l'utilisateur **existe déjà** dans la base de données.
