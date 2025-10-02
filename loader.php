@@ -829,6 +829,128 @@ function db_hash(string $password): string {
 }
 
 
+/**
+ * Compte le nombre de lignes correspondant à une requête
+ * 
+ * @param string $sql Requête SQL (doit contenir un COUNT)
+ * @param array $params Paramètres pour la requête
+ * @return int Nombre de lignes
+ * 
+ * @example db_count("SELECT COUNT(*) FROM users WHERE active = ?", [1])
+ */
+function db_count(string $sql, array $params = []): int {
+    try {
+        $stmt = db_connect()->prepare($sql);
+        $stmt->execute($params);
+        return (int) $stmt->fetchColumn();
+    } catch (PDOException $e) {
+        db_error("Erreur COUNT", $e);
+    }
+}
+
+/**
+ * Vérifie si des éléments existent dans une table avec des conditions flexibles
+ * 
+ * @param string $table Table à vérifier
+ * @param array $conditions Conditions sous forme [colonne => valeur] ou string SQL
+ * @param array $params Paramètres si condition SQL
+ * @return bool True si au moins un élément existe
+ * 
+ * @example db_element_exist('users', ['email' => 'test@example.com'])
+ * @example db_element_exist('users', 'email = ? AND active = ?', ['test@example.com', 1])
+ * 
+ */
+function db_element_exist(string $table, $conditions = [], array $params = []): bool {
+    try {
+        if (is_array($conditions) && !empty($conditions)) {
+            // Mode tableau associatif
+            $whereParts = [];
+            $whereParams = [];
+            
+            foreach ($conditions as $column => $value) {
+                $whereParts[] = "`{$column}` = ?";
+                $whereParams[] = $value;
+            }
+            
+            $sql = "SELECT COUNT(*) FROM `{$table}` WHERE " . implode(' AND ', $whereParts);
+            $params = $whereParams;
+        } elseif (is_string($conditions) && !empty($conditions)) {
+            // Mode SQL personnalisé
+            $sql = "SELECT COUNT(*) FROM `{$table}` WHERE {$conditions}";
+        } else {
+            // Compter toutes les lignes
+            $sql = "SELECT COUNT(*) FROM `{$table}`";
+        }
+        
+        return db_count($sql, $params) > 0;
+        
+    } catch (PDOException $e) {
+        $debug = env('DEBUG_MODE') === 'true' || env('DEBUG_MODE') === true;
+        $message = "Erreur vérification existence dans {$table}";
+        
+        if ($debug) {
+            error_log("DB_HAS Error: " . $e->getMessage() . " | Conditions: " . json_encode($conditions));
+        }
+        
+        db_error($message, $debug ? $e : null);
+    }
+}
+
+/**
+ * Insère des données avec validation et gestion d'erreurs améliorée
+ * 
+ * @param string $table Table cible
+ * @param array $data Données à insérer
+ * @param bool $ignoreDuplicate Ignorer les erreurs de doublon
+ * @return string|bool Dernier ID inséré ou false
+ */
+function db_insert(string $table, array $data, bool $ignoreDuplicate = false) {
+    if (empty($data)) {
+        error_log("DB_INSERT Error: Données vides pour la table {$table}");
+        return false;
+    }
+    
+    try {
+        $columns = array_keys($data);
+        $placeholders = array_fill(0, count($columns), '?');
+        
+        $ignore = $ignoreDuplicate ? 'IGNORE' : '';
+        $sql = "INSERT {$ignore} INTO `{$table}` (`" . implode('`, `', $columns) . "`) 
+                VALUES (" . implode(', ', $placeholders) . ")";
+        
+        $success = db_execute($sql, array_values($data));
+        
+        if ($success) {
+            $lastId = db_last_id();
+            
+            // Log en mode debug
+            $debug = env('DEBUG_MODE') === 'true' || env('DEBUG_MODE') === true;
+            if ($debug) {
+                error_log("DB_INSERT Success: Table {$table} | ID: {$lastId} | Data: " . json_encode($data));
+            }
+            
+            return $lastId;
+        }
+        
+        return false;
+        
+    } catch (PDOException $e) {
+        $debug = env('DEBUG_MODE') === 'true' || env('DEBUG_MODE') === true;
+        $message = "Erreur insertion dans {$table}";
+        
+        if ($debug) {
+            error_log("DB_INSERT Error: " . $e->getMessage() . " | Data: " . json_encode($data));
+        }
+        
+        // Gestion spécifique des doublons
+        if (strpos($e->getMessage(), 'Duplicate entry') !== false && $ignoreDuplicate) {
+            return false;
+        }
+        
+        db_error($message, $debug ? $e : null);
+    }
+}
+
 
 /**
  * PRISE EN CHARGE DE LA GESTION DES METHODES 
