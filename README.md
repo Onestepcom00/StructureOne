@@ -153,7 +153,31 @@ $db_host = env('DB_HOST');
 
 Nous avons récemment ajouté des fonctionnalités de **sécurisation avancée** :  
 
-### 🔑 `jwt_generate($id)`  
+### 🔑 `jwt_generate($id)` 
+- Cette fonction prends en charge un tableau ou un id simple .
+
+```php
+<?php
+/** Premier cas **/
+// Génération du token
+$userData = [
+    'id' => 123,
+    'name' => 'John Doe',
+    'email' => 'john@example.com'
+];
+// Va generer un token en fonction du tableau
+$token = jwt_generate($userData);
+
+/** Deuxieme cas **/
+$id = 1; // Par exemple on suppose que c'est l'id 1 qu'on veux renvoyer en token 
+$myToken = jwt_generate($id);
+?>
+```
+
+
+
+
+
 - Génère rapidement un **token JWT** à partir de l’ID utilisateur.  
 - Utilise la clé secrète définie dans `.env` ou `config.php`.  
 - Nécessite deux constantes :  
@@ -165,6 +189,45 @@ Nous avons récemment ajouté des fonctionnalités de **sécurisation avancée**
 - Retourne l’**ID** si le token est valide.  
 - Vérifie rigoureusement l’expiration et la validité du token.  
 - Utilise également `API_TOKEN_SECRET` et `API_TOKEN_EXP`.  
+
+Pour verifier si un token est valide , vous n'aurez qu'a entrer le token :
+
+```php
+<?php
+
+// exemple de token 
+$token = "eyJ1aWQiOiI4IiwiZXhwIjoxNzU5NDQ2NDY0fQ.NTY2NDc4ZjljMmE4OTEzYzgwZGMyYTM5MjkzODE2YTdiY2QxMWEwNDA2OTRjNjljOGVkM2VmNGQyMGJhYWViNA";
+
+// Decoder 
+$decoded = jwt_validate($token);
+
+// Verifier si le token est valide
+if($decoded){
+  // creer une response a renvoyer dans la requete 
+  $response = [
+    "jwt_decoded" => $decoded
+  ];
+
+  // Renvoyer la reponse (en API)
+  echo api_response(200,"Token valide",$response);
+}else{
+  // LE token est invalide 
+  echo api_response(401,"Token Invalide",null);
+}
+?>
+```
+
+Si le token est valide vous aurez une reponse similaire : 
+```json
+{
+    "status": "success",
+    "message": "Token valide",
+    "jwt_decoded": {
+        "uid": "8",
+        "exp": 1759446464
+    }
+}
+```
 
 ### 🛡️ `validate($data, $rules)`  
 - Vérifie strictement les entrées pour éviter les injections arbitraires.  
