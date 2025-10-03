@@ -49,6 +49,13 @@ define('BASE_DATA','/core/database'); // Le dossier qui va contenir les bases de
 define('BASE_UPLOADS','/core/uploads'); // Le dossier qui va contenir les fichiers uploades
 define('BASE_CACHE','/core/cache'); // Le dossier qui va contenir les fichiers caches
 define('BASE_LOGS','/core/logs'); // Le dossier qui va contenir les fichiers logs
+
+/**
+ * Chemins des routes
+ */
+define('LEGACY_ROUTES_PATH', 'core/routes');
+define('VERSIONED_ROUTES_PATH', 'core/versions');
+
 /**
  * 
  * Mettre le chemin ou se trouve le dossier de l'API

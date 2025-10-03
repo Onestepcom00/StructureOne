@@ -126,129 +126,286 @@ $_response = [
     exit; // stopper l'execution du script
 }
 
-
-
+// =============================================================================
+// GESTIONNAIRES D'ERREURS GLOBAUX (NOUVEAU)
+// =============================================================================
 
 /**
- * 
- * Fonction simple pour extraire le nom de la route
- * 
- * 
+ * Configure l'affichage des erreurs selon DEBUG_MODE
  */
-function getRouteName($uri, $basePath) {
-    /**
-     * 
-     * Retirer le chemin de base de l'URI si nécessaire
-     * 
-     */
-    if (!empty($basePath) && strpos($uri, $basePath) === 0) {
-        $uri = substr($uri, strlen($basePath));
+function configureErrorDisplay() {
+    $debugMode = env('DEBUG_MODE') === 'true' || env('DEBUG_MODE') === true;
+    
+    if ($debugMode) {
+        // Mode développement
+        error_reporting(E_ALL);
+        ini_set('display_errors', '1');
+        ini_set('display_startup_errors', '1');
+        error_log("DEBUG_MODE: Activated - Full error display enabled");
+    } else {
+        // Mode production
+        error_reporting(0);
+        ini_set('display_errors', '0');
+        ini_set('display_startup_errors', '0');
+    }
+}
+
+/**
+ * Gestionnaire d'erreurs global pour l'API
+ */
+function globalErrorHandler($errno, $errstr, $errfile, $errline) {
+    $debugMode = env('DEBUG_MODE') === 'true' || env('DEBUG_MODE') === true;
+    
+    // Log de l'erreur
+    error_log("PHP Error [{$errno}]: {$errstr} in {$errfile} on line {$errline}");
+    
+    // Si DEBUG_MODE est activé et erreur critique, afficher détails
+    if ($debugMode && in_array($errno, [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR])) {
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Internal Server Error',
+            'debug' => [
+                'error_type' => 'PHP_ERROR',
+                'message' => $errstr,
+                'file' => basename($errfile),
+                'line' => $errline
+            ]
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
     }
     
-    /**
-     * 
-     * Nettoyer l'URI
-     * 
-     */
-    $uri = rtrim($uri, '/');
+    // Ne pas exécuter le gestionnaire d'erreurs interne de PHP
+    return true;
+}
+
+/**
+ * Gestionnaire d'exceptions global
+ */
+function globalExceptionHandler($exception) {
+    $debugMode = env('DEBUG_MODE') === 'true' || env('DEBUG_MODE') === true;
     
-    /**
-     * 
-     * Extraire le nom de la route après /api/
-     * 
-     */
-    if (preg_match('#^/api/([^/]+)#', $uri, $matches)) {
-        return $matches[1];
+    // Log de l'exception
+    error_log("EXCEPTION: " . $exception->getMessage() . " in " . $exception->getFile() . " on line " . $exception->getLine());
+    
+    $response = [
+        'status' => 'error',
+        'message' => 'Internal Server Error'
+    ];
+    
+    // Ajouter les détails de débogage si activé
+    if ($debugMode) {
+        $response['debug'] = [
+            'exception' => get_class($exception),
+            'message' => $exception->getMessage(),
+            'file' => basename($exception->getFile()),
+            'line' => $exception->getLine()
+        ];
+    }
+    
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: application/json; charset=utf-8');
+    }
+    
+    echo json_encode($response, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// Enregistrer les gestionnaires d'erreurs au chargement du fichier
+set_error_handler('globalErrorHandler');
+set_exception_handler('globalExceptionHandler');
+
+// =============================================================================
+// FONCTIONS DE ROUTAGE (RÉTROCOMPATIBLES)
+// =============================================================================
+
+/**
+ * ANCIENNE FONCTION - Conservée pour rétrocompatibilité
+ * Extraire le nom de la route depuis l'URI
+ * 
+ * @param string $requestUri URI de la requête
+ * @param string $baseAppDir Répertoire de base de l'application
+ * @return string|null Nom de la route ou null
+ */
+function getRouteName($requestUri, $baseAppDir) {
+    // Nettoyer l'URI
+    $cleanUri = str_replace($baseAppDir, '', $requestUri);
+    $cleanUri = trim($cleanUri, '/');
+    
+    // Séparer les parties de l'URI
+    $uriParts = explode('/', $cleanUri);
+    
+    // Ancienne logique : /api/routeName
+    if (count($uriParts) >= 2 && $uriParts[0] === 'api') {
+        return $uriParts[1];
     }
     
     return null;
 }
 
 /**
- * 
- * Fonction simple pour charger une route
- * 
- * 
+ * NOUVELLE FONCTION - Détection du versionning
+ * Détecte la route et la version à partir de l'URI
  */
-function loadRouteFiles($routeName) {
-    /**
-     * 
-     * Obtenir le chemin absolu du script courant
-     * 
-     */
-    $baseDir = dirname(__FILE__);
+function detectRouteAndVersion($requestUri, $baseAppDir) {
+    // Nettoyer l'URI et enlever le base path
+    $cleanUri = str_replace($baseAppDir, '', $requestUri);
+    $cleanUri = trim($cleanUri, '/');
     
-    /**
-     * 
-     * Construire le chemin ABSOLU vers le dossier de la route
-     * 
-     */
-    $routeDir = $baseDir . BASE_ROUTEUR . "/{$routeName}";
-    $appFile = $routeDir . "/index.php";
-    $functionFile = $routeDir . "/functions.php";
+    // Séparer les parties de l'URI
+    $uriParts = explode('/', $cleanUri);
     
-    /**
-     * 
-     * Debug: Afficher les chemins pour verification
-     * 
-     */
-    /*
-    error_log("Base dir: " . $baseDir);
-    error_log("Route dir: " . $routeDir);
-    error_log("App file: " . $appFile);
-    error_log("Function file: " . $functionFile);
-    error_log("Directory exists: " . (is_dir($routeDir) ? 'yes' : 'no'));
-    */
-    
-    /**
-     * 
-     * Verifier si le dossier existe
-     * 
-     */
-    if (!is_dir($routeDir)) {
+    // Vérifier si c'est une route versionnée (format: /api/v1/routeName)
+    if (count($uriParts) >= 3 && $uriParts[0] === 'api' && preg_match('/^v\d+$/', $uriParts[1])) {
+        $version = $uriParts[1];
+        $routeName = $uriParts[2];
+        $basePath = "core/versions/{$version}";
+        
         return [
-            'success' => false,
-            'error' => "Route directory '{$routeDir}' not found"
+            'version' => $version,
+            'routeName' => $routeName,
+            'basePath' => $basePath,
+            'type' => 'versioned'
+        ];
+    }
+    // Vérifier si c'est une route legacy (format: /api/routeName)
+    elseif (count($uriParts) >= 2 && $uriParts[0] === 'api') {
+        $routeName = $uriParts[1];
+        $basePath = "core/routes";
+        
+        return [
+            'version' => 'legacy',
+            'routeName' => $routeName,
+            'basePath' => $basePath,
+            'type' => 'legacy'
         ];
     }
     
-    /**
-     * 
-     * Verifier si les fichiers existent
-     * 
-     */
-    if (!file_exists($appFile)) {
+    return null;
+}
+
+/**
+ * FONCTION UNIFIÉE - Charge les fichiers de route
+ * Supporte à la fois l'ancien et le nouveau système
+ */
+function loadRouteFiles($routeName, $version = 'legacy', $basePath = 'core/routes') {
+    $routePath = "{$basePath}/{$routeName}";
+    
+    // Vérifier si le dossier de la route existe
+    if (!is_dir($routePath)) {
         return [
             'success' => false,
-            'error' => "Index file for route '{$routeName}' not found at: {$appFile}"
+            'error' => "Route '{$routeName}' not found",
+            'version' => $version,
+            'searched_path' => $routePath
         ];
     }
     
-    if (!file_exists($functionFile)) {
+    // Chemin vers le fichier index principal de la route
+    $indexFile = "{$routePath}/index.php";
+    
+    // Vérifier si le fichier index existe
+    if (!file_exists($indexFile)) {
         return [
             'success' => false,
-            'error' => "Functions file for route '{$routeName}' not found at: {$functionFile}"
+            'error' => "Route handler not found for '{$routeName}'",
+            'version' => $version,
+            'searched_file' => $indexFile
         ];
     }
     
-    /**
-     * 
-     * Charger les fichiers
-     * 
-     */
     try {
-        require $functionFile;
-        require $appFile;
+        /**
+         * INCLUSION INTELLIGENTE DES FONCTIONS
+         * Inclure d'abord functions.php s'il existe, puis index.php
+         */
+        $functionsFile = "{$routePath}/functions.php";
+        if (file_exists($functionsFile)) {
+            require $functionsFile;
+        }
         
-        return ['success' => true];
+        // Inclure le fichier index principal de la route
+        require $indexFile;
         
+        return [
+            'success' => true,
+            'message' => "Route '{$routeName}' loaded successfully",
+            'version' => $version,
+            'type' => ($version === 'legacy') ? 'legacy' : 'versioned'
+        ];
     } catch (Exception $e) {
+        $debugInfo = [];
+        
+        // Ajouter info debug si activé
+        if (env('DEBUG_MODE') === 'true' || env('DEBUG_MODE') === true) {
+            $debugInfo = [
+                'exception_file' => basename($e->getFile()),
+                'exception_line' => $e->getLine()
+            ];
+        }
+        
         return [
             'success' => false,
-            'error' => "Error loading route: " . $e->getMessage()
+            'error' => "Error loading route '{$routeName}'",
+            'version' => $version,
+            'debug_info' => $debugInfo
         ];
     }
 }
+
+/**
+ * Récupère la liste des routes disponibles
+ */
+function getAvailableRoutes($basePath) {
+    if (!is_dir($basePath)) {
+        return ["Directory not found: {$basePath}"];
+    }
+    
+    $items = scandir($basePath);
+    $routes = [];
+    
+    foreach ($items as $item) {
+        if ($item !== '.' && $item !== '..' && is_dir("{$basePath}/{$item}")) {
+            $routes[] = $item;
+        }
+    }
+    
+    return $routes;
+}
+
+/**
+ * Récupère la liste des versions disponibles
+ */
+function getAvailableVersions() {
+    $versions = [];
+    $versionsPath = 'core/versions';
+    
+    if (is_dir($versionsPath)) {
+        $folders = scandir($versionsPath);
+        foreach ($folders as $folder) {
+            if ($folder !== '.' && $folder !== '..' && is_dir("{$versionsPath}/{$folder}")) {
+                if (preg_match('/^v\d+$/', $folder)) {
+                    $versions[] = $folder;
+                }
+            }
+        }
+        sort($versions);
+    }
+    
+    // Toujours inclure la version legacy
+    $versions[] = 'legacy';
+    
+    return $versions;
+}
+
+// Configuration automatique de l'affichage des erreurs
+configureErrorDisplay();
+
 
 /**
  * 
