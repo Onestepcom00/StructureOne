@@ -417,6 +417,25 @@ echo db_escape($form);
 ?>
 ```
 
+6.**Verifier un element sur la base des donnees (version courte)** : `db_element_exist()`
+
+Il existe aussi une version plus courte pour verifier l'existance d'un element dans la base des donnees
+
+```php
+<?php
+/** Verifier la methode autoriser **/
+require_method('GET');
+
+/** Verifier si l'adresse mail existe dans la table *admin* , verifier l'element dans la colonne *admin_email* adaptez cela en fonction de vos besoins **/
+if(db_element_exist('admin',['admin_email' => 'test@gmail.com'])){
+    echo api_response(200,"Utilisateur existe",null);
+}else{
+    echo api_response(404,"Utilisateur non existant",null);
+}
+
+?>
+```
+
 Nous avons récemment ajouté un **module complet pour la création sécurisée d'utilisateurs**. Voici les points clés :
 
 - Vérification automatique si l'utilisateur **existe déjà** dans la base de données.
