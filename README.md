@@ -1,18 +1,27 @@
-![strctureOne Logo](./core/github_save/logo.png)
+# StructureOne - Architecture PHP Évolutive
 
-# StructureOne - Architecture PHP
-
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![PHP](https://img.shields.io/badge/PHP-7.4%252B-777BB4.svg)
+![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![PHP](https://img.shields.io/badge/PHP-7.4%2B-777BB4.svg?logo=php)
+![MySQL](https://img.shields.io/badge/MySQL-8.0%2B-4479A1.svg?logo=mysql)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
+![API](https://img.shields.io/badge/API-RESTful-FF6B6B.svg)
+![JWT](https://img.shields.io/badge/Security-JWT-32CD32.svg)
+![Architecture](https://img.shields.io/badge/Architecture-MVC-9B59B6.svg)
 
 ---
 
 ## 🚀 Introduction
 
-**StructureOne** est une architecture pensée pour simplifier le développement de projets PHP.  
-Elle réduit considérablement le temps de configuration et facilite la gestion dynamique des routes API.  
-Le but est d’offrir aux équipes de développement un cadre structuré, clair et évolutif.  
+**StructureOne** est une architecture PHP moderne conçue pour accélérer le développement d'APIs robustes et sécurisées.  
+Elle combine simplicité d'utilisation avec des fonctionnalités avancées pour les projets d'entreprise.
+
+**✨ Nouveautés v2.0 :**
+- ✅ **Versionning d'API** (`/api/v1/`, `/api/v2/`)
+- ✅ **Gestion d'erreurs globale** avec mode debug
+- ✅ **Système d'authentification JWT** automatique
+- ✅ **Fonctions de base de données** optimisées
+- ✅ **Rétrocompatibilité** totale avec l'ancien système
+
 
 ---
 
@@ -26,6 +35,7 @@ Le projet est composé de **6 fichiers principaux** et **1 dossier racine**.
   Gère dynamiquement les routes.  
   Ajoutez simplement un dossier dans `/core/routes/NOM_DU_DOSSIER` et le système appellera automatiquement son code pour gérer la route.  
   ➝ Aucun besoin de modifier ce fichier.
+  ➝ Peut desormais prendre en charge des API par version depuis le dossier `/core/versions/v1/NOM_DU_DOSSIER` , la meme logique est garder.
 
 - **config.php**  
   Contient toutes les **configurations globales** et importantes.  
@@ -121,7 +131,44 @@ Créez simplement un dossier `test` dans `/core/routes/` avec :
     }
 }
 ```
+---
 
+## 🐛 Gestion des Erreurs
+
+🔧 Mode Debug Intelligent
+Sans DEBUG_MODE :
+
+```json
+{
+    "status": "error",
+    "message": "Route non trouvée"
+}
+```
+Avec DEBUG_MODE=true :
+
+```json
+{
+    "status": "error", 
+    "message": "Route 'users' non trouvée",
+    "data": {
+        "requested_route": "users",
+        "version": "v2",
+        "debug": {
+            "searched_path": "core/versions/v2/users",
+            "available_routes": ["v1", "auth", "test"]
+        }
+    }
+}
+```
+
+## ⚙️ Configuration
+
+```php
+// .env
+DEBUG_MODE=true
+API_TOKEN_SECRET=votre_cle_super_secrete
+API_TOKEN_EXP=3600
+```
 ---
 
 ## 🛠️ Fonctions globales
@@ -504,18 +551,103 @@ Si la mise à jour ajoute de nouvelles fonctions globales ou configurations, pen
 - `.env` (si nécessaire)  
 
 ---
+## 📚 Exemples Complets
+### 🔐 Route d'Authentification
+```php
+<?php
+// /core/routes/auth/login/index.php
 
-## 👨‍💻 Auteur
+require_method('POST');
 
-Projet **StructureOne** créé par : **Exauce Stan Malka (Exauce Malumba)**  
-Développé pour simplifier la vie des développeurs et répondre aux besoins des équipes ayant atteint une certaine échelle.  
+$input = json_decode(file_get_contents('php://input'), true);
 
-✨ Soutenu par la startup **Kreatyva**, utilisé notamment dans le projet **EdithAI_Personal**.  
+// Validation
+if (empty($input['email']) || empty($input['password'])) {
+    echo api_response(400, "Email et mot de passe requis");
+    exit;
+}
 
-📧 Contact : **onestepcom00@gmail.com**  
+// Vérification des identifiants
+$user = db_find("SELECT * FROM users WHERE email = ?", [$input['email']]);
+
+if ($user && password_verify($input['password'], $user['password'])) {
+    // Génération du token
+    $tokenData = [
+        'id' => $user['id'],
+        'name' => $user['name'],
+        'email' => $user['email'],
+        'role' => $user['role']
+    ];
+    
+    $token = jwt_generate($tokenData);
+    
+    echo api_response(200, "Connexion réussie", [
+        'user' => $tokenData,
+        'token' => $token,
+        'expires_in' => 3600
+    ]);
+} else {
+    echo api_response(401, "Identifiants invalides");
+}
+?>
+```
+
+### 📊 Route de Dashboard Protégée
+```php
+<?php
+// /core/versions/v1/admin/dashboard/index.php
+
+require_method('GET');
+
+// Authentification et rôle admin requis
+$user = require_auth_role(['admin', 'superadmin']);
+
+// Récupération des statistiques
+$stats = [
+    'total_users' => db_count("SELECT COUNT(*) FROM users"),
+    'active_users' => db_count("SELECT COUNT(*) FROM users WHERE active = 1"),
+    'recent_signups' => db_select("SELECT name, email, created_at FROM users ORDER BY created_at DESC LIMIT 5")
+];
+
+echo api_response(200, "Dashboard administrateur", [
+    'user' => $user,
+    'stats' => $stats
+]);
+?>
+```
+
+## 🔮 Futures Améliorations
+### 🚧 En Développement
+-Middleware avancé pour la validation des données
+- Rate limiting et protection contre les attaques DDoS
+- Cache Redis intégré pour les performances
+- Documentation API auto-générée (OpenAPI/Swagger)
+- Tests automatisés avec PHPUnit
+- Container Docker pour le déploiement
+
+### 💡 Idées en Réflexion
+- WebSocket pour les applications temps réel
+- GraphQL en alternative à REST
+- Microservices avec communication inter-APIs
+- Monitoring en temps réel avec métriques
+
+---
+### 👨‍💻 Auteur & Contribution
+StructureOne est créé et maintenu par Exauce Stan Malka (Exauce Malumba)
+
+💼 Utilisé en production par :
+
+Kreatyva - Plateforme de création digitale
+EdithAI_Personal - Assistant IA personnel
+Plusieurs Autres projet
+
+📧 Contact : onestepcom00@gmail.com
+🐛 Issues & Contributions : Les PR sont les bienvenues !
 
 ---
 
-## 📜 Licence
+### 📜 Licence
 
 Ce projet est distribué sous licence **MIT**.
+
+
