@@ -20,10 +20,32 @@
  */
 
 /**
- * Require les fichiers de configurations et loader des fonctions 
+ * 
+ * Activer l'affichage des erreurs pour le débogage (à désactiver en production)
+ * 
  */
-require 'config.php';
-require 'loader.php';
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+/**
+ * 
+ * Require les fichiers de configurations et loader des fonctions 
+ * 
+ * 
+ */
+try {
+    require 'config.php';
+    require 'loader.php';
+} catch (Exception $e) {
+    header('Content-Type: application/json');
+    http_response_code(500);
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Erreur de chargement des fichiers de configuration',
+        'error' => $e->getMessage()
+    ]);
+    exit;
+}
 
 /**
  * Point d'entrée principal
