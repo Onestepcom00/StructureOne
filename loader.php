@@ -1125,6 +1125,18 @@ function db_insert(string $table, array $data, bool $ignoreDuplicate = false) {
  * @return bool Retourne true si la méthode est conforme
  */
 function require_method($expectedMethod, $errorResponse = null) {
+   /**
+    * 
+    *
+    * Nous avons ajouter cette ligne pour eviter les erreurs de CORS origin
+    *
+    *
+    */
+    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        http_response_code(200);
+        exit;
+    }
+   
     $expectedMethod = strtoupper($expectedMethod);
     
     if ($_SERVER['REQUEST_METHOD'] !== $expectedMethod) {
@@ -1160,6 +1172,18 @@ function require_method($expectedMethod, $errorResponse = null) {
  * @return bool Retourne true si une des méthodes est conforme
  */
 function require_method_in($expectedMethods, $errorResponse = null) {
+   /**
+    * 
+    *
+    * Nous avons ajouter cette ligne pour eviter les erreurs de CORS origin
+    *
+    *
+    */
+    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        http_response_code(200);
+        exit;
+    }
+   
     if (is_string($expectedMethods)) {
         $expectedMethods = explode(',', $expectedMethods);
     }
