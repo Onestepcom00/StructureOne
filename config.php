@@ -25,7 +25,7 @@
 header('Access-Control-Allow-Origin: *'); // Autoriser toutes les origines 
 header('Access-Control-Allow-Methods: GET, POST , OPTIONS'); // Autoriser les methodes HTTP
 header('Access-Control-Allow-Headers: Content-Type, Authorization'); // Autoriser les headers specifiques
-header('Content-Type: application/json'); // Type de contenu JSON
+header('Content-Type: application/json;charset=utf-8'); // Type de contenu JSON
 
 
 /**
