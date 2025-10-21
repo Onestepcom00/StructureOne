@@ -971,7 +971,7 @@ function db_last_id(): string {
  * 
  */
 function db_escape(string $input): string {
-    return htmlspecialchars(strip_tags($input));
+    return trim(strip_tags($input));
 }
 
 /**
