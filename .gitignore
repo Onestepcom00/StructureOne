@@ -1,0 +1,92 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Dependencies
+/vendor/
+composer.lock
+package-lock.json
+yarn.lock
+node_modules/
+
+# Build files
+/build/
+/dist/
+*.min.js
+*.min.css
+
+# Cache and logs
+/core/cache/*
+/core/logs/*
+!.gitkeep
+
+# Uploads
+/core/uploads/*
+!/core/uploads/.gitkeep
+
+# IDE specific files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Local development
+*.local
+*.log
+
+# Debug logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+/coverage/
+
+# Local development server
+/.phpunit.result.cache
+
+# Environment-specific configuration
+/config/*.local.php
+
+# Composer
+dev/
+
+# IDE
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Vim swap files
+*.swp
+*.swo
+
+# Windows image file caches
+Thumbs.db
+
+# Folder config file
+[Dd]esktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
+
+# End of https://www.toptal.com/developers/gitignore/api/composer,node,php,phpstorm,sublimetext,vim,windows
