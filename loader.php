@@ -3,12 +3,12 @@
 /**
  * 
  * *************************************
- * Projet : Mololo plus
+ * Projet : PROJECT_NAME
  * Nom du fichier : loader.php
  * Decsription : Ce fichier va contenir toute les functions utiles pour le fonctionnement de l'API , ses fonctions ne vont pas dependre des differentes routes , c'est des fonctions accessibles a toutes les routes de l'API.
- * Date de creation : 27/09/2025
- * Date de modification : 27/09/2025
- * version : 1.0
+ * Date de creation : PROJECT_DATE
+ * Date de modification : PROJECT_DATE
+ * version : PROJECT_VERSION
  * Auteur : Exaustan Malka
  * Stacks : PHP, MySQL, API
  * *************************************
@@ -1228,4 +1228,21 @@ function require_method_in($expectedMethods, $errorResponse = null) {
     return true;
 }
 
+/**
+ *
+ *
+ *
+ * LA FONCTION POUR GERER LES ERREURS 
+ *
+ *
+*/
+function getError($e) {
+    $debug_info = env('DEBUG_MODE') === 'true' ? [
+        'error' => $e->getMessage(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine()
+    ] : null;
+
+    return api_response(500, null, $debug_info);
+}
 ?>
