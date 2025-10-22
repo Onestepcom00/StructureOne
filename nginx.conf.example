@@ -1,0 +1,58 @@
+# ==============================================================
+# 🔐 CONFIGURATION NGINX POUR L'API (SECURITE + ROUTAGE)
+# ==============================================================
+
+server {
+    listen 80;
+    server_name exemple.com;  # 📝 à modifier selon ton domaine
+
+    root /var/www/html;
+    index index.php;
+
+    # 🚫 Interdire l'accès aux fichiers sensibles (.env, .git, etc.)
+    location ~ /\.(env|git|htaccess|htpasswd|ini|log|json|xml|md)$ {
+        deny all;
+        return 403;
+    }
+
+    # 🚫 Bloquer l’accès à certains dossiers
+    location ~ ^/(vendor|node_modules|config|core|private|backup)/ {
+        deny all;
+        return 403;
+    }
+
+    # 🚫 Désactiver la navigation de répertoires
+    autoindex off;
+
+    # 🚫 Empêcher l’exécution de PHP dans /uploads
+    location ^~ /uploads/ {
+        location ~ \.php$ { return 403; }
+    }
+
+    # ✅ Rediriger tout vers index.php si le fichier n’existe pas
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # ✅ Gérer les fichiers PHP
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock; # ⚙️ Adapter selon ta version PHP
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    # ✅ Headers de sécurité et CORS
+    add_header Access-Control-Allow-Origin "*" always;
+    add_header Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE" always;
+    add_header Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With" always;
+    add_header Content-Type "application/json; charset=utf-8" always;
+
+    # 🛡️ Headers de sécurité
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+    # add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always; # 🔒 Optionnel HTTPS
+}
