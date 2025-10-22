@@ -12,7 +12,7 @@
 
  try{
     // afficher une reponse
-    echo api_response(200,"L'API sans version fonctionne bien",null);
+    echo api_response(200,getHello(),null);
  }catch(Exception $e){
     // Afficher les erreurs en fonction du debug 
     echo getError($e);

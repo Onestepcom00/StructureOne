@@ -153,8 +153,7 @@ Exemple : route `/api/test`
 
 Créez simplement un dossier `test` dans `/core/routes/` ou `core/versions/VOTRE_VERSION/`avec :
 
-- `index.php` → contient le code de l’API.  
-- `functions.php` → contient les fonctions utiles appelées par `index.php`.  
+peu importe les nombres des fichiers que vous allez creer dans ce dossier , le routeur va se charger de les prendre en compte.
 
 ⚠️ Inutile d’inclure `loader.php` et `config.php`, le routeur s’en charge déjà.  
 

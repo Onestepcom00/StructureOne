@@ -221,46 +221,27 @@ set_error_handler('globalErrorHandler');
 set_exception_handler('globalExceptionHandler');
 
 // =============================================================================
-// FONCTIONS DE ROUTAGE (RÉTROCOMPATIBLES)
+// FONCTIONS DE ROUTAGE (RÉTROCOMPATIBLES AVEC AUTO-CHARGEMENT)
 // =============================================================================
 
 /**
  * ANCIENNE FONCTION - Conservée pour rétrocompatibilité
  * Extraire le nom de la route depuis l'URI
- * 
- * @param string $requestUri URI de la requête
- * @param string $baseAppDir Répertoire de base de l'application
- * @return string|null Nom de la route ou null
  */
 function getRouteName($requestUri, $baseAppDir) {
-    // Nettoyer l'URI
-    $cleanUri = str_replace($baseAppDir, '', $requestUri);
-    $cleanUri = trim($cleanUri, '/');
-    
-    // Séparer les parties de l'URI
-    $uriParts = explode('/', $cleanUri);
-    
-    // Ancienne logique : /api/routeName
-    if (count($uriParts) >= 2 && $uriParts[0] === 'api') {
-        return $uriParts[1];
-    }
-    
-    return null;
+    // Utilise la nouvelle fonction en arrière-plan
+    $routeInfo = detectRouteAndVersion($requestUri, $baseAppDir);
+    return $routeInfo ? $routeInfo['routeName'] : null;
 }
 
 /**
- * NOUVELLE FONCTION - Détection du versionning
- * Détecte la route et la version à partir de l'URI
+ * NOUVELLE FONCTION - Détection du versionning (inchangée)
  */
 function detectRouteAndVersion($requestUri, $baseAppDir) {
-    // Nettoyer l'URI et enlever le base path
     $cleanUri = str_replace($baseAppDir, '', $requestUri);
     $cleanUri = trim($cleanUri, '/');
-    
-    // Séparer les parties de l'URI
     $uriParts = explode('/', $cleanUri);
     
-    // Vérifier si c'est une route versionnée (format: /api/v1/routeName)
     if (count($uriParts) >= 3 && $uriParts[0] === 'api' && preg_match('/^v\d+$/', $uriParts[1])) {
         $version = $uriParts[1];
         $routeName = $uriParts[2];
@@ -273,7 +254,6 @@ function detectRouteAndVersion($requestUri, $baseAppDir) {
             'type' => 'versioned'
         ];
     }
-    // Vérifier si c'est une route legacy (format: /api/routeName)
     elseif (count($uriParts) >= 2 && $uriParts[0] === 'api') {
         $routeName = $uriParts[1];
         $basePath = "core/routes";
@@ -290,13 +270,12 @@ function detectRouteAndVersion($requestUri, $baseAppDir) {
 }
 
 /**
- * FONCTION UNIFIÉE - Charge les fichiers de route
- * Supporte à la fois l'ancien et le nouveau système
+ * FONCTION UNIFIÉE AMÉLIORÉE - Charge tous les fichiers automatiquement
+ * Supporte rétrocompatibilité + auto-chargement intelligent
  */
 function loadRouteFiles($routeName, $version = 'legacy', $basePath = 'core/routes') {
     $routePath = "{$basePath}/{$routeName}";
     
-    // Vérifier si le dossier de la route existe
     if (!is_dir($routePath)) {
         return [
             'success' => false,
@@ -306,10 +285,8 @@ function loadRouteFiles($routeName, $version = 'legacy', $basePath = 'core/route
         ];
     }
     
-    // Chemin vers le fichier index principal de la route
     $indexFile = "{$routePath}/index.php";
     
-    // Vérifier si le fichier index existe
     if (!file_exists($indexFile)) {
         return [
             'success' => false,
@@ -320,46 +297,122 @@ function loadRouteFiles($routeName, $version = 'legacy', $basePath = 'core/route
     }
     
     try {
-        /**
-         * INCLUSION INTELLIGENTE DES FONCTIONS
-         * Inclure d'abord functions.php s'il existe, puis index.php
-         */
-        $functionsFile = "{$routePath}/functions.php";
-        if (file_exists($functionsFile)) {
-            require $functionsFile;
+        // CHARGEMENT INTELLIGENT DE TOUS LES FICHIERS
+        $loadResult = loadAllRouteFiles($routePath, $version);
+        
+        if (!$loadResult['success']) {
+            return $loadResult;
         }
         
-        // Inclure le fichier index principal de la route
+        // Inclure le fichier index principal en dernier (comme avant)
         require $indexFile;
         
         return [
             'success' => true,
             'message' => "Route '{$routeName}' loaded successfully",
             'version' => $version,
-            'type' => ($version === 'legacy') ? 'legacy' : 'versioned'
+            'type' => ($version === 'legacy') ? 'legacy' : 'versioned',
+            'loaded_files' => $loadResult['loaded_files']
         ];
     } catch (Exception $e) {
-        $debugInfo = [];
-        
-        // Ajouter info debug si activé
-        if (env('DEBUG_MODE') === 'true' || env('DEBUG_MODE') === true) {
-            $debugInfo = [
-                'exception_file' => basename($e->getFile()),
-                'exception_line' => $e->getLine()
-            ];
-        }
-        
-        return [
-            'success' => false,
-            'error' => "Error loading route '{$routeName}'",
-            'version' => $version,
-            'debug_info' => $debugInfo
-        ];
+        return handleRouteError($e, $routeName, $version);
     }
 }
 
 /**
- * Récupère la liste des routes disponibles
+ * NOUVELLE FONCTION - Charge automatiquement tous les fichiers PHP du dossier
+ * Maintient la rétrocompatibilité avec l'ancien système
+ */
+function loadAllRouteFiles($routePath, $version) {
+    $loadedFiles = [];
+    
+    if (!is_dir($routePath)) {
+        return [
+            'success' => false,
+            'error' => "Route path not found: {$routePath}",
+            'loaded_files' => $loadedFiles
+        ];
+    }
+    
+    // Récupérer tous les fichiers PHP du dossier (sauf index.php qui sera chargé après)
+    $files = scandir($routePath);
+    $phpFiles = [];
+    
+    foreach ($files as $file) {
+        if ($file !== '.' && $file !== '..' && 
+            $file !== 'index.php' && 
+            pathinfo($file, PATHINFO_EXTENSION) === 'php') {
+            $phpFiles[] = $file;
+        }
+    }
+    
+    // TRI INTELLIGENT pour maintenir l'ordre de chargement
+    // 1. functions.php en premier (rétrocompatibilité)
+    // 2. Les autres fichiers par ordre alphabétique
+    $priorityFiles = [];
+    $otherFiles = [];
+    
+    foreach ($phpFiles as $file) {
+        if ($file === 'functions.php') {
+            $priorityFiles[] = $file;
+        } else {
+            $otherFiles[] = $file;
+        }
+    }
+    
+    // Trier les autres fichiers par ordre alphabétique
+    sort($otherFiles);
+    $sortedFiles = array_merge($priorityFiles, $otherFiles);
+    
+    // CHARGEMENT DES FICHIERS
+    foreach ($sortedFiles as $file) {
+        $filePath = "{$routePath}/{$file}";
+        if (file_exists($filePath)) {
+            try {
+                require $filePath;
+                $loadedFiles[] = $file;
+            } catch (Exception $e) {
+                return [
+                    'success' => false,
+                    'error' => "Error loading file '{$file}': " . $e->getMessage(),
+                    'failed_file' => $file,
+                    'loaded_files' => $loadedFiles
+                ];
+            }
+        }
+    }
+    
+    return [
+        'success' => true,
+        'loaded_files' => $loadedFiles,
+        'total_files' => count($sortedFiles)
+    ];
+}
+
+/**
+ * Gestion centralisée des erreurs de route
+ */
+function handleRouteError($e, $routeName, $version) {
+    $debugInfo = [];
+    
+    if (env('DEBUG_MODE') === 'true' || env('DEBUG_MODE') === true) {
+        $debugInfo = [
+            'exception_file' => basename($e->getFile()),
+            'exception_line' => $e->getLine(),
+            'exception_message' => $e->getMessage()
+        ];
+    }
+    
+    return [
+        'success' => false,
+        'error' => "Error loading route '{$routeName}'",
+        'version' => $version,
+        'debug_info' => $debugInfo
+    ];
+}
+
+/**
+ * Récupère la liste des routes disponibles (inchangée)
  */
 function getAvailableRoutes($basePath) {
     if (!is_dir($basePath)) {
@@ -379,7 +432,7 @@ function getAvailableRoutes($basePath) {
 }
 
 /**
- * Récupère la liste des versions disponibles
+ * Récupère la liste des versions disponibles (inchangée)
  */
 function getAvailableVersions() {
     $versions = [];
@@ -397,7 +450,6 @@ function getAvailableVersions() {
         sort($versions);
     }
     
-    // Toujours inclure la version legacy
     $versions[] = 'legacy';
     
     return $versions;
