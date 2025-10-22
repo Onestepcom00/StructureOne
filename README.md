@@ -1,26 +1,39 @@
-# StructureOne - Architecture PHP Évolutive
+# ![StructureOne Logo](/core/github_save/logo.png)
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
-![PHP](https://img.shields.io/badge/PHP-7.4%2B-777BB4.svg?logo=php)
-![MySQL](https://img.shields.io/badge/MySQL-8.0%2B-4479A1.svg?logo=mysql)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
-![API](https://img.shields.io/badge/API-RESTful-FF6B6B.svg)
-![JWT](https://img.shields.io/badge/Security-JWT-32CD32.svg)
-![Architecture](https://img.shields.io/badge/Architecture-MVC-9B59B6.svg)
+# ⚡ StructureOne - Architecture PHP Évolutive et Universelle
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Version-2.1.0-blueviolet?style=for-the-badge&logo=github" />
+  <img src="https://img.shields.io/badge/PHP-7.4%2B-777BB4?style=for-the-badge&logo=php" />
+  <img src="https://img.shields.io/badge/MySQL-8.0%2B-4479A1?style=for-the-badge&logo=mysql" />
+  <img src="https://img.shields.io/badge/License-MIT-success?style=for-the-badge&logo=open-source-initiative" />
+  <img src="https://img.shields.io/badge/API-RESTful-FF6B6B?style=for-the-badge&logo=postman" />
+  <img src="https://img.shields.io/badge/Security-JWT-32CD32?style=for-the-badge&logo=auth0" />
+  <img src="https://img.shields.io/badge/🏆-Meilleur%20Mini%20Framework%20API-orange?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/🔥-Classé%20N°1%20des%20MicroFrameworks-critical?style=for-the-badge" />
+</p>
+
 
 ---
 
 ## 🚀 Introduction
 
-**StructureOne** est une architecture PHP moderne conçue pour accélérer le développement d'APIs robustes et sécurisées.  
-Elle combine simplicité d'utilisation avec des fonctionnalités avancées pour les projets d'entreprise.
+**StructureOne** est une architecture PHP moderne et universelle, conçue pour être **compatible avec n’importe quel serveur**, que ce soit **Apache ou Nginx**.  
+Grâce à sa nouvelle conception, le framework détecte automatiquement l’environnement serveur et s’adapte sans configuration manuelle.
+Cette compatibilité universelle a été développée pour garantir une **installation fluide, rapide et sécurisée**, quel que soit l’hébergeur ou l’environnement.
 
-**✨ Nouveautés v2.0 :**
-- ✅ **Versionning d'API** (`/api/v1/`, `/api/v2/`)
-- ✅ **Gestion d'erreurs globale** avec mode debug
-- ✅ **Système d'authentification JWT** automatique
-- ✅ **Fonctions de base de données** optimisées
-- ✅ **Rétrocompatibilité** totale avec l'ancien système
+---
+
+## ✨ Fonctionnalités Clés
+
+- 🔧 **Versioning d’API** : support natif pour `/api/v1/`, `/api/v2/`  
+- 🧠 **Compatibilité multi-serveurs** : Apache & Nginx  
+- 🛡️ **Sécurité avancée** : protection automatique des fichiers sensibles  
+- 🧩 **Système JWT intégré** : authentification robuste et simple  
+- 🧰 **Gestion des erreurs et du debug** intégrée  
+- ♻️ **Rétrocompatibilité garantie** avec les versions précédentes  
+
+StructureOne vise à évoluer continuellement. Pour les utilisateurs en production, chaque mise à jour restera compatible avec vos versions précédentes, sauf correctifs de sécurité critiques.
 
 
 ---
@@ -50,19 +63,26 @@ Le projet est composé de **6 fichiers principaux** et **1 dossier racine**.
   Scripts d’installation du projet (au choix Python ou Node.js).  
   Une fois l’installation terminée, vous pouvez supprimer ces fichiers.
 
-- **.htaccess** et **.env**  
+- **.htaccess** ,  **.env** et **nginx.conf.example**  
+  - `nginx.conf.example` → Crucial car il est le fichier d'example pour la configuration Nginx
   - `.htaccess` → Crucial pour la réécriture d’URL et la redirection des requêtes vers le routeur.  
   - `.env` → Généré automatiquement lors de l’installation (contient les configurations sensibles).  
+
+Par defaut vous n'eetes pas obliger d'ajouter la configuration Nginx sauf si cela vous est utile.
+
+> Pour eviter d'exposer votre fichier d'environnement , veuillez ouvrir le fichier du routeur (index.php) puis allez a la ligne 107 , mettez le chemin vers votre nouvelle emplacement du fichier .env
 
 ### Dossier `/core/` :
 
 - **/routes/** → Contient les dossiers de chaque route API.  
+- **/versions** → Contient les dossiers par versions des routes , `/versions/NOM_DE_LA_VERSIO/NOM_DE_LA_ROUTE` (ex : `/versions/v1/users_info`)
 - **/logs/** → Stockage des logs (erreurs, succès, monitoring).  
 - **/database/** → Contient les fichiers `.sql` ou `.bdd`.  
 - **/uploads/** → Contient les fichiers uploadés (organisez par sous-dossiers : `/uploads/file/`, `/uploads/images/` …).  
 - **/cache/** → Contient les caches du système.  
 
-Vous pouvez ajouter d’autres dossiers spécifiques à votre projet (exemple : `/core/templates/`) et les définir dans `config.php` :
+
+> Vous etes libre de personnaliser vos dossiers , sauf les dossiers ci-haut , créez autant des dossiers que vous voulez soyez libre , nous vous imposons rien , au cas ou vous voulez que vos dossiers deviennet des parametres du systemes alors ouvrez le fichier config.php ajoutez son chemin comme constante
 
 ```php
 define('BASE_TEMPLATES','/core/templates');
@@ -71,6 +91,8 @@ define('BASE_TEMPLATES','/core/templates');
 ---
 
 ## ⚙️ Installation
+
+Lorsque vous clonez le projet depuis github , vous ne serez pas obliger d'utiliser les installateurs car ceux-ci sont rarement mis en jour , nous vous recommandons de passer directement a l'etape suivante.
 
 ### Via Node.js
 
@@ -112,12 +134,14 @@ python3 install.py
 Les routes API sont automatiquement gérées.  
 Exemple : route `/api/test`  
 
-Créez simplement un dossier `test` dans `/core/routes/` avec :
+Créez simplement un dossier `test` dans `/core/routes/` ou `core/versions/VOTRE_VERSION/`avec :
 
 - `index.php` → contient le code de l’API.  
 - `functions.php` → contient les fonctions utiles appelées par `index.php`.  
 
 ⚠️ Inutile d’inclure `loader.php` et `config.php`, le routeur s’en charge déjà.  
+
+> A La base StructureOne gère pour vous les taches plus flemmant , celui d'ajouter manuellement des routes par case .
 
 ### Exemple de réponse `/api/test` :
 
@@ -135,31 +159,45 @@ Créez simplement un dossier `test` dans `/core/routes/` avec :
 
 ## 🐛 Gestion des Erreurs
 
-🔧 Mode Debug Intelligent
+Lorsque vous creez votre  route , n'oubliez pas d'ajouter la fonction `getError()` si vous utilisez une exception , et cela va activer ou desactiver automatiquement les erreurs si vous etes en production.
 Sans DEBUG_MODE :
 
-```json
-{
-    "status": "error",
-    "message": "Route non trouvée"
-}
-```
-Avec DEBUG_MODE=true :
+```php
 
-```json
-{
-    "status": "error", 
-    "message": "Route 'users' non trouvée",
-    "data": {
-        "requested_route": "users",
-        "version": "v2",
-        "debug": {
-            "searched_path": "core/versions/v2/users",
-            "available_routes": ["v1", "auth", "test"]
-        }
-    }
+try {
+    // Votre code ici 
+} catch (Exception $e) {
+   // A L'execption 
+    echo getError($e);
 }
+
 ```
+
+Si certains de nos fonctions de base ne tiennent pas a vos besoin comme par exemple la fonction `getError` alors , vous pouvez ajouter cette suite de code :
+
+```php
+
+try{
+   // Votre code ici
+} catch (Exception $e) {
+    // Gestion des erreurs inattendues
+    error_log("ERROR TITLE " . $e->getMessage());
+    
+    $debug_info = null;
+    if (env('DEBUG_MODE') === 'true') {
+        $debug_info = [
+            'error' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine()
+        ];
+    }
+    
+    echo api_response(500, null, $debug_info);
+}
+
+```
+
+Les deux codes ci-haut font carrement la meme chose.
 
 ## ⚙️ Configuration
 
@@ -173,13 +211,41 @@ API_TOKEN_EXP=3600
 
 ## 🛠️ Fonctions globales
 
-### `loadEnv()`
-Charge automatiquement les variables du fichier `.env`.  
+Les fonctions globals , sont des fonctions déjà mis en place pour vous aidez à aller plus vite , vous n'etes pas conditionner de les utiliser , ses fonctions repondent a des besoins varier.
 
-### `api_response($status, $message = null, $data = null)`  
-Simplifie le retour JSON formaté avec le bon **HTTP status code**.  
 
-Exemple :
+### Renvoyer une reponse a la sortie de votre API
+
+Pour eviter a chaque fois d'ecrire un bloc de code repetif : 
+
+```php
+// Exemple de tableau 
+$VOTRE_TABLEAU = [
+  "status" => "success",
+  "message" => "Utilisateur inscrit avec success",
+  "data" => ["uid" => 1]
+];
+// Renvoyer un code 
+http_respone_code(200);
+// Renvoyer une reponse
+echo json_encode($VOTRE_TABLEAU,true);
+exit;
+```
+
+Ce travail pourrait etre très fatiguant , surtout lorsque vous avez beaucoup des routes a gérez , alors pour ce faire nous avons mis en place une fonction bien speciale , pour resoudre ce probleme.
+
+```php
+api_response($status, $message = null, $data = null)
+```  
+
+Cette fonction simplifie la sortit des reponses JSON , gère les caractères pour eviter les erreurs de caracters **Unicode** et bien plus.
+Cette fonction prends en entré 3 valeurs : 
+
+- `$status` : Il s'agit du status de la reponse , precedement mis dans `http_response_code(200)` , ici ce parametre prends en charge tout type de code d'erreur.
+- `$message` : ce parametre est **optionnel** , c'est juste le message qui sortira a la reponse , precedement `Utilisateur inscrit avec success` , ici au cas ou vous mettez rien , il va mettre lui meme la reponse correspondant a l'erreur , par exemple 404 correspond a **Not Found**
+- `$data` : Ceci est aussi **optionnel** , prends en entré un `string` ou un `tableau` , precedement `"data" => ["uid" => 1]`.
+
+Exemple D'utilisation :
 
 ```php
 echo api_response(200, "Requête réussie", [
@@ -187,21 +253,17 @@ echo api_response(200, "Requête réussie", [
 ]);
 ```
 
-### `env($key)`  
-Récupère une variable définie dans `.env` :  
+### Recuperer un element existant dans le fichier d'environnement
+Nous avons mis en place une fonction qui permet de recuperer directement un element venant du fichier d'environnement :  
 
 ```php
 $db_host = env('DB_HOST');
 ```
+ 
 
----
-
-## 🔒 Nouveautés : Sécurité & Validation
-
-Nous avons récemment ajouté des fonctionnalités de **sécurisation avancée** :  
-
-### 🔑 `jwt_generate($id)` 
-- Cette fonction prends en charge un tableau ou un id simple .
+### Generer un jeton JWT
+ 
+Il existe une fonction pour generer un jeton JWT , fonctionnel , cette fonction prends en entré un `string` ou un `tableau`.
 
 ```php
 <?php
@@ -220,20 +282,10 @@ $id = 1; // Par exemple on suppose que c'est l'id 1 qu'on veux renvoyer en token
 $myToken = jwt_generate($id);
 ?>
 ```
+> Il est important d'utiliser la meme methode pour decoder votre jeton JWT 
 
-
-
-
-
-- Génère rapidement un **token JWT** à partir de l’ID utilisateur.  
-- Utilise la clé secrète définie dans `.env` ou `config.php`.  
-- Nécessite deux constantes :  
-  - `API_TOKEN_SECRET`  
-  - `API_TOKEN_EXP` (durée d’expiration).  
-
-### ✅ `jwt_validate($token)`  
+### Verifier et Valider un jeton JWT
 - Valide un token JWT existant.  
-- Retourne l’**ID** si le token est valide.  
 - Vérifie rigoureusement l’expiration et la validité du token.  
 - Utilise également `API_TOKEN_SECRET` et `API_TOKEN_EXP`.  
 
@@ -264,31 +316,7 @@ if($decoded){
 ?>
 ```
 
-Si le token est valide vous aurez une reponse similaire : 
-```json
-{
-    "status": "success",
-    "message": "Token valide",
-    "jwt_decoded": {
-        "uid": "8",
-        "exp": 1759446464
-    }
-}
-```
-
-### 🛡️ `validate($data, $rules)`  
-- Vérifie strictement les entrées pour éviter les injections arbitraires.  
-- Supporte les données venant de `php://input`, `$_POST` ou `$_GET`.  
-- Exemple d’utilisation :  
-
-```php
-validate($_POST,[
-   "username" => "required",
-   "password" => "required"
-]);
-```
-
-Cette fonction empêche efficacement l’envoi de données non conformes.  
+  
 
 ### 🌍 Gestion automatique du header `Authorization`  
 
@@ -319,9 +347,7 @@ function test(){
 👉 Cette pratique rend l’API **très sécurisée** et simple à maintenir. 
 
 
-### 🚀 Améliorations du système d'inscription
-
-### GERER LES METHODES DE REQUETES AUTORISER 
+### Gérer les methodes des requetes entrant
 
 Nous avons enormement simplifier les choses en ajoutant des fonctions globaux , pour vous permettre de designer les methodes autoriser dans vos routes.
 nous avons ajouter la fonction `require_method()` et `require_method_in`
@@ -483,65 +509,17 @@ if(db_element_exist('admin',['admin_email' => 'test@gmail.com'])){
 ?>
 ```
 
-Nous avons récemment ajouté un **module complet pour la création sécurisée d'utilisateurs**. Voici les points clés :
-
-- Vérification automatique si l'utilisateur **existe déjà** dans la base de données.
-- Gestion des erreurs robustes avec `db_find()` et `db_execute()`.
-- Retour JSON clair pour informer le client si l'utilisateur existe ou si la création est réussie.
-- Génération automatique d'un **jeton JWT** après création.
-- Utilisation des nouvelles fonctions globales `db_connect()`, `db_find()`, `db_execute()`, et `db_last_id()`.
-- Gestion du hashage de mot de passe via `db_hash()`.
-
-### 🔍 Exemple rapide d'utilisation
-
-```php
-// Créer un nouvel utilisateur
-create_user('john', db_hash('motdepasse123'));
-
-// Retour si succès :
-// {
-//     "status": 201,
-//     "message": "Utilisateur créé avec succès",
-//     "data": {"jwt_token": "<token>"}
-// }
-
-// Retour si utilisateur existant :
-// {
-//     "status": 409,
-//     "message": "L'utilisateur existe déjà",
-//     "data": null
-// }
-```
-
-### 📂 Où trouver le code
-
-Le code de base pour créer un système d'inscription sécurisé est disponible dans :
-
-```
-/core/routes/signup/
-```
-
-- `index.php` : logique principale pour créer l'utilisateur et générer le JWT.
-- `functions.php` : fonctions utilitaires pour la base de données et la validation.
-
-> Vous pouvez consulter ce dossier pour comprendre la logique, réutiliser ou adapter le code pour d'autres routes.
-
-### ⚡ Notes importantes
-
-- Les fonctions globales `db_connect()`, `db_find()`, `db_execute()` et `db_last_id()` assurent maintenant que la connexion à la base de données est vérifiée avant toute requête, ce qui empêche les erreurs critiques si la base de données n'est pas disponible.
-- `DEBUG_MODE` dans `.env` est pris en compte pour afficher ou cacher les messages détaillés d'erreur.
-- La création d'utilisateur est maintenant **conditionnée par l'existence dans la base** et ne peut plus créer un doublon.
-
-Ces mises à jour permettent de créer rapidement un système d'inscription sécurisé et plug-and-play dans StructureOne.
 
 
+
+> Referez vous a ces exemples de code pour voir comment vous pouvez utilisez ses fonctions.
 
 ---
 
 ## 🔄 Mise à jour des routes
 
 Pour ajouter une nouvelle API :  
-1. Créez un dossier dans `/core/routes/` au nom de la route.  
+1. Créez un dossier dans `/core/routes/` au nom de la route ou dans `/core/versions/VERSION_DE_ROUTE/`.  
 2. Ajoutez vos fichiers `index.php` et `functions.php`.  
 3. Le système détectera automatiquement cette route.  
 
@@ -600,7 +578,7 @@ if ($user && password_verify($input['password'], $user['password'])) {
 require_method('GET');
 
 // Authentification et rôle admin requis
-$user = require_auth_role(['admin', 'superadmin']);
+
 
 // Récupération des statistiques
 $stats = [
@@ -616,22 +594,19 @@ echo api_response(200, "Dashboard administrateur", [
 ?>
 ```
 
-## 🔮 Futures Améliorations
-### 🚧 En Développement
--Middleware avancé pour la validation des données
-- Rate limiting et protection contre les attaques DDoS
-- Cache Redis intégré pour les performances
-- Documentation API auto-générée (OpenAPI/Swagger)
-- Tests automatisés avec PHPUnit
-- Container Docker pour le déploiement
+---
 
-### 💡 Idées en Réflexion
-- WebSocket pour les applications temps réel
-- GraphQL en alternative à REST
-- Microservices avec communication inter-APIs
-- Monitoring en temps réel avec métriques
+## ⚙️ Futures Mises à Jour
+
+- ⚡ **Inclusion automatique** de tous les fichiers de la route  
+- 🧱 **Middleware avancé** pour la validation et la sécurité  
+- 🧠 **Gestion du cache avec Redis**  
+- 🐳 **Déploiement simplifié avec Docker**  
+- 🧪 **Tests automatisés avec PHPUnit**  
+- 📦 **Support complet de Composer** pour les dépendances externes  
 
 ---
+
 ### 👨‍💻 Auteur & Contribution
 StructureOne est créé et maintenu par Exauce Stan Malka (Exauce Malumba)
 
@@ -651,3 +626,8 @@ Plusieurs Autres projet
 Ce projet est distribué sous licence **MIT**.
 
 
+---
+
+*Dernière mise à jour : 22/10/2025*
+
+---
