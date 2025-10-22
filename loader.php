@@ -415,7 +415,19 @@ configureErrorDisplay();
  * @return bool True si le chargement a reussi, false sinon
  * 
  */
-function loadEnv($envPath = '.env') {
+function loadEnv($envPath = null) {
+   /**
+    *
+    *  Verifier si le fichier n'environnement n'a pas ete donner 
+    *
+    *
+    */
+    if($envPath == null){
+       $envPath = ".env"; // Utiliser le chemin par defaut 
+    }else{
+       $envPath = $envPath; // Utiliser le chemin que l'utilisateur chosit
+    }
+   
     /**
      * 
      * Verifier si le fichier .env existe
