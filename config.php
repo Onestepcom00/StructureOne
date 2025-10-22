@@ -17,16 +17,79 @@
  */
 
 /**
- * 
- * Configuration de l'API , ici nous allons mettre 
- * les configurations lier a l'API et les methodes autoriser 
- * 
+ * ===========================================================
+ * 🔐 CONFIGURATION DES EN-TÊTES HTTP (HEADERS DE SÉCURITÉ)
+ * ===========================================================
+ * Ces headers protègent ton API contre diverses attaques :
+ * - XSS (cross-site scripting)
+ * - Clickjacking
+ * - MIME sniffing
+ * - Vol de tokens via CORS mal configuré
+ * - Cache non contrôlé
  */
-header('Access-Control-Allow-Origin: *'); // Autoriser toutes les origines 
-header('Access-Control-Allow-Methods: GET, POST , OPTIONS'); // Autoriser les methodes HTTP
-header('Access-Control-Allow-Headers: Content-Type, Authorization'); // Autoriser les headers specifiques
-header('Content-Type: application/json;charset=utf-8'); // Type de contenu JSON
 
+/**
+ * 🌍 CORS (Cross-Origin Resource Sharing)
+ * Autoriser les domaines et méthodes spécifiques.
+ * ⚠️ En production, évite le "*" et remplace-le par ton domaine :
+ *     ex: header('Access-Control-Allow-Origin: https://baziks.media');
+ */
+header('Access-Control-Allow-Origin: *'); 
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS'); 
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With'); 
+
+/**
+ * 📦 Type de contenu par défaut
+ */
+header('Content-Type: application/json; charset=utf-8'); 
+
+/**
+ * 🧱 Protection contre le sniffing du contenu
+ * (Empêche le navigateur d'interpréter un fichier JSON comme du HTML)
+ */
+header('X-Content-Type-Options: nosniff'); 
+
+/**
+ * 🛡️ Protection contre le clickjacking
+ * (Empêche le chargement de ton API dans une iframe externe)
+ */
+header('X-Frame-Options: DENY'); 
+
+/**
+ * 🚫 Protection XSS de base (ancien mécanisme IE/Chrome)
+ * ⚠️ Optionnel car obsolète sur navigateurs modernes, mais sans danger
+ */
+header('X-XSS-Protection: 1; mode=block'); // optionnel
+
+/**
+ * 🔏 Politique stricte du cache
+ * (Empêche les navigateurs/proxy de stocker des réponses sensibles)
+ */
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache'); 
+header('Expires: 0'); 
+
+/**
+ * 🧩 Optionnel : Cross-Origin Resource Policy (CORP)
+ * Renforce la séparation des ressources entre origines.
+ * À activer uniquement si ton API est utilisée par des frontends sûrs.
+ */
+// header('Cross-Origin-Resource-Policy: same-origin'); 
+
+/**
+ * 🧩 Optionnel : Cross-Origin-Embedder & Opener Policy (COEP/COOP)
+ * Utiles pour les apps web modernes (WebAssembly, SharedArrayBuffer)
+ */
+// header('Cross-Origin-Opener-Policy: same-origin');
+// header('Cross-Origin-Embedder-Policy: require-corp');
+
+/**
+ * ✅ Gérer les requêtes OPTIONS (prévol CORS)
+ */
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
 
 /**
  * 
