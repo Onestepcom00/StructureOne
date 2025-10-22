@@ -95,9 +95,16 @@ if (!$routeName && !$routeInfo) {
 }
 
 /**
- * Charger le fichier env
+ * ------------------------------------------------------------------
+ * IMPORTANT POUR LE FICHIER D'ENVIRONNEMENT AVEC CHEMIN PERSONNALISER
+ * -------------------------------------------------------------------
+ * Il se pourrait que certains serveur peuvent pas prendre en compte certaines configurations
+ * Pour bloquer la lecture distante de ce fichier crucial , voila pour nous vous laissons libre 
+ * De choisir l'emplacement qui correspond .
+ * Modifier la Ligne 106 comme suite : loadEnv("le_chemin_vers_votre_fichier_env");
+ * Par defaut il est mis a la racine .
  */
-loadEnv();
+loadEnv(); // Exemple : loadEnv("private/.env");
 
 /**
  * CHARGEMENT INTELLIGENT DES ROUTES
