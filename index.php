@@ -2,7 +2,7 @@
 
 /**
  * *************************************
- * Projet : Mololo plus
+ * Projet : PROJECT_NAME
  * Nom du fichier : index.php
  * Description : IL s'agit du fichier principale qui va gerer les routes d'apis
  * necessaire pour le bon fonctionnement des API system.
