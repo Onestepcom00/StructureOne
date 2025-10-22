@@ -40,7 +40,23 @@ StructureOne vise à évoluer continuellement. Pour les utilisateurs en producti
 
 ## 📂 Structure du projet
 
-Le projet est composé de **6 fichiers principaux** et **1 dossier racine**.  
+LLe projet est composer de plusieurs fichiers :
+
+```
+my-project/
+├── core/
+│   ├── routes/         # API route handlers
+│   ├── database/       # Database migrations and seeds
+│   ├── logs/           # Application logs
+│   ├── versions/       # API route avec versions
+│   ├── cache/          # Cache files
+│   └── uploads/        # Uploaded files
+├── .env                # Environment variables
+├── .htaccess           # La configuration serveur Apache
+├── index.php           # Le routeur
+├── config.php          # Les configuartions manuelle
+├── laoder.php          # Toute les fonctions globaux
+```
 
 ### Fichiers :
 
@@ -93,6 +109,7 @@ define('BASE_TEMPLATES','/core/templates');
 ## ⚙️ Installation
 
 Lorsque vous clonez le projet depuis github , vous ne serez pas obliger d'utiliser les installateurs car ceux-ci sont rarement mis en jour , nous vous recommandons de passer directement a l'etape suivante.
+
 
 ### Via Node.js
 
