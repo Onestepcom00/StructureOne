@@ -1,6 +1,27 @@
+# ==============================================================
+# 🔐 CONFIGURATION DE SECURITE ET DE ROUTAGE POUR L'API (APACHE)
+# ==============================================================
+
+# ✅ Activer la réécriture d'URL
 RewriteEngine On
 
-# Rediriger toutes les requêtes qui ne correspondent pas à un fichier ou dossier existant
+# 🚫 Interdire l'accès aux fichiers sensibles (.env, .git, etc.)
+<FilesMatch "^\.(env|git|htaccess|htpasswd|ini|log|json|md|xml)$">
+    Require all denied
+</FilesMatch>
+
+# 🚫 Bloquer l’accès direct à certains répertoires sensibles
+RedirectMatch 403 ^/(vendor|node_modules|config|core|private|backup)/.*
+
+# 🚫 Désactiver la navigation dans les répertoires
+Options -Indexes
+
+# 🚫 Empêcher l’exécution de scripts PHP dans des dossiers spécifiques (uploads, etc.)
+<Directory "uploads">
+    php_flag engine off
+</Directory>
+
+# ✅ Rediriger toutes les requêtes non existantes vers index.php (API Router)
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ index.php [QSA,L]
