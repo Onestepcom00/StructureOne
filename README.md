@@ -29,7 +29,7 @@ Cette compatibilité universelle a été développée pour garantir une **instal
 - 🔧 **Versioning d’API** : support natif pour `/api/v1/`, `/api/v2/`  
 - 🧠 **Compatibilité multi-serveurs** : Apache & Nginx  
 - 🛡️ **Sécurité avancée** : protection automatique des fichiers sensibles  
-- 🧩 **Système JWT intégré** : authentification robuste et simple  
+- 🧩 **Support Composer** : StructureOne a été conçue pour être compatible avec Composer 
 - 🧰 **Gestion des erreurs et du debug** intégrée  
 - ♻️ **Rétrocompatibilité garantie** avec les versions précédentes  
 
@@ -51,6 +51,7 @@ my-project/
 │   ├── versions/       # API route avec versions
 │   ├── cache/          # Cache files
 │   └── uploads/        # Uploaded files
+├── vendor              # Les dependances au cas ou vous utilisez composer
 ├── .env                # Environment variables
 ├── .htaccess           # La configuration serveur Apache
 ├── index.php           # Le routeur
@@ -618,8 +619,7 @@ echo api_response(200, "Dashboard administrateur", [
 - 🧱 **Middleware avancé** pour la validation et la sécurité  
 - 🧠 **Gestion du cache avec Redis**  
 - 🐳 **Déploiement simplifié avec Docker**  
-- 🧪 **Tests automatisés avec PHPUnit**  
-- 📦 **Support complet de Composer** pour les dépendances externes  
+- 🧪 **Tests automatisés avec PHPUnit**  avec Composer. 
 
 ---
 

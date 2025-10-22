@@ -1297,4 +1297,35 @@ function getError($e) {
 
     return api_response(500, null, $debug_info);
 }
+
+/**
+ * Charger automatiquement les dépendances Composer
+ *
+ * Cette fonction détecte automatiquement le bon chemin vers vendor/autoload.php
+ * peu importe depuis quel dossier ou environnement (Apache, Nginx, CLI)
+ * l’application est exécutée.
+ */
+function getComposer()
+{
+    $autoloadPaths = [
+        __DIR__ . '/vendor/autoload.php',            // racine du projet
+        __DIR__ . '/../vendor/autoload.php',         // exécution depuis /core/
+        dirname(__DIR__) . '/vendor/autoload.php',   // exécution depuis /core/routes/ ou /core/versions/
+        __DIR__ . '/../../vendor/autoload.php',      // sécurité : route ou version dans un sous-niveau
+        dirname(__DIR__, 2) . '/vendor/autoload.php',// fallback supplémentaire (cas rare)
+        $_SERVER['DOCUMENT_ROOT'] . '/vendor/autoload.php' // exécution via serveur web mal configuré
+    ];
+
+    $autoloadLoaded = false;
+
+    foreach ($autoloadPaths as $autoloadFile) {
+        if (file_exists($autoloadFile)) {
+            require_once $autoloadFile;
+            $autoloadLoaded = true;
+            break;
+        }
+    }
+
+    return $autoloadLoaded;
+}
 ?>

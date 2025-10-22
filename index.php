@@ -106,6 +106,18 @@ if (!$routeName && !$routeInfo) {
  */
 loadEnv(); // Exemple : loadEnv("private/.env");
 
+/***
+ * 
+ * 
+ * -------------------------------------------------------------------------
+ * IMPORTANT POUR GERER  COMPOSER 
+ * -------------------------------------------------------------------------
+ * Cette fonction est tres utile car elle vous permet d'utiliser des dependances 
+ * 
+ * 
+ */
+getComposer();
+
 /**
  * CHARGEMENT INTELLIGENT DES ROUTES
  * Priorité au nouveau système de versionning, puis à l'ancien système
