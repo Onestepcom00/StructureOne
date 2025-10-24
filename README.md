@@ -624,7 +624,13 @@ echo api_response(200, "Dashboard administrateur", [
 ---
 
 ### 👨‍💻 Auteur & Contribution
-StructureOne est créé et maintenu par Exauce Stan Malka (Exauce Malumba)
+StructureOne est créé et maintenu par Exauce Stan Malka (Exauce Malumba) <br>
+
+> Vous pouvez soutenir le createur de ce projet avec un petit café , cela nous encourage enormement a continuer a vous offrir le meilleur de nous
+<br>
+
+[![Support via Donation](https://img.shields.io/badge/Donate-Here-ff69b4?logo=heart&style=for-the-badge)](https://jxzmkdpz.mychariow.shop/donation)
+
 
 💼 Utilisé en production par :
 
