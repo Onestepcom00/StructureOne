@@ -13,6 +13,8 @@
   <img src="https://img.shields.io/badge/🔥-Classé%20N°1%20des%20MicroFrameworks-critical?style=for-the-badge" />
 </p>
 
+<p align="center"><img src="https://trendshift.io/api/badge/repositories/13425" alt="Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></p>
+
 
 ---
 
