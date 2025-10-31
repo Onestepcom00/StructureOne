@@ -641,6 +641,226 @@ echo api_response(200, "Dashboard administrateur", [
 
 ---
 
+## 🧱 Système de Middleware Ultra-Simplifié (v2.1.1+)
+
+### 🎯 Introduction
+
+StructureOne intègre un système de middleware **révolutionnaire** : **UNE SEULE fonction** pour TOUS vos besoins de validation et sécurité !
+
+**📚 Guide Complet :** Consultez [`GUIDE_MIDDLEWARE_COMPLET.md`](GUIDE_MIDDLEWARE_COMPLET.md) pour un cours détaillé avec exemples.
+
+### ⚡ Usage Ultra-Simple
+
+**Principe :** Une seule fonction `middleware()` gère TOUT :
+
+```php
+// Validation simple
+$data = middleware(['json' => ['email', 'password']]);
+if (!$data) exit;
+
+// Complet (auth + rate limit + validation + sanitization)
+$data = middleware([
+    'rate' => [10, 60],              // Rate limiting
+    'auth' => true,                   // Authentification JWT
+    'role' => ['admin'],              // Autorisation
+    'json' => ['title', 'content'],   // Champs requis
+    'sanitize' => ['title' => 'string'], // Nettoyage XSS
+    'validate' => function($data) {   // Validation custom
+        return strlen($data['title']) >= 3 ? true : "Titre trop court";
+    }
+]);
+if (!$data) exit;
+```
+
+**Résultat :** Code **70% plus court**, sécurité **maximale** ! ✨
+
+### 📋 Options Disponibles
+
+La fonction `middleware()` accepte ces options :
+
+| Option | Type | Description | Exemple |
+|--------|------|-------------|---------|
+| `json` | `array` | Champs JSON requis | `['email', 'password']` |
+| `optional` | `array` | Champs optionnels avec défaut | `['remember' => false]` |
+| `auth` | `bool` | Authentification JWT requise | `true` |
+| `role` | `array` | Rôles autorisés | `['admin', 'moderator']` |
+| `rate` | `array` | [max requêtes, secondes] | `[10, 60]` = 10/min |
+| `sanitize` | `array` | Nettoyage automatique | `['email' => 'email']` |
+| `validate` | `callable` | Fonction de validation custom | `function($data) {}` |
+
+### 🎯 Exemples d'Utilisation
+
+#### Exemple 1 : Route Publique Simple
+
+```php
+<?php
+require_method('POST');
+
+// Validation JSON avec rate limit
+$data = middleware([
+    'rate' => [100, 60],  // 100 requêtes/minute
+    'json' => ['email', 'message']
+]);
+if (!$data) exit;
+
+sendContactEmail($data['email'], $data['message']);
+echo api_response(200, "Message envoyé");
+?>
+```
+
+#### Exemple 2 : Route avec Authentification
+
+```php
+<?php
+require_method('GET');
+
+// Auth + rate limit
+$data = middleware([
+    'auth' => true,
+    'rate' => [60, 60]
+]);
+if (!$data) exit;
+
+$user = middleware_auth(); // Données du token JWT
+$profile = getUserProfile($user['id']);
+echo api_response(200, "Profil", $profile);
+?>
+```
+
+#### Exemple 3 : Route Admin Complète
+
+```php
+<?php
+require_method('POST');
+
+// TOUT : rate limit + auth + role + validation + sanitization
+$data = middleware([
+    'rate' => [20, 60],
+    'auth' => true,
+    'role' => ['admin'],
+    'json' => ['title', 'content'],
+    'sanitize' => [
+        'title' => 'string',
+        'content' => 'string'
+    ],
+    'validate' => function($data) {
+        if (strlen($data['title']) < 3) {
+            return "Titre trop court";
+        }
+        return true;
+    }
+]);
+if (!$data) exit;
+
+$post = createPost($data);
+echo api_response(201, "Post créé", $post);
+?>
+```
+
+### ⚡ Fonctions Raccourcies
+
+Pour les cas simples :
+
+```php
+// JSON uniquement
+$data = middleware_json(['email', 'password']);
+
+// Auth uniquement
+$user = middleware_auth();
+
+// Rate limit uniquement
+middleware_rate(60, 60); // 60 requêtes/minute
+```
+
+### 🎓 Exemple Complet : Route CRUD Posts
+
+Consultez [`/core/routes/posts/index.php`](core/routes/posts/index.php) pour un exemple complet avec :
+- ✅ CRUD complet (GET, POST, PUT, DELETE)
+- ✅ Rate limiting adapté par méthode
+- ✅ Authentification
+- ✅ Autorisation admin
+- ✅ Validation complète
+- ✅ Sanitization
+
+### 📚 Documentation Complète
+
+**Pour apprendre en détail :**
+- **[GUIDE_MIDDLEWARE_COMPLET.md](GUIDE_MIDDLEWARE_COMPLET.md)** - Cours complet sur les middlewares et rate limiting
+- **[/core/routes/posts/](core/routes/posts/)** - Exemple CRUD complet
+
+**Le guide couvre :**
+- 📖 Qu'est-ce qu'un middleware ? (avec analogies)
+- 🎯 Pourquoi utiliser des middlewares ?
+- ⚡ Utilisation étape par étape (7 niveaux)
+- 🚦 Rate limiting en détail et son importance
+- 🎨 Patterns courants
+- 🧪 Tests et debugging
+- ✅ Checklist complète
+
+---
+
+## 🔍 Détection Automatique de Conflits (MODE DEBUG)
+
+En mode DEBUG, StructureOne détecte automatiquement les conflits de variables pour vous aider au debugging.
+
+### Activer le Mode DEBUG
+
+```env
+# .env
+DEBUG_MODE=true
+```
+
+### Détecter les Conflits
+
+```php
+<?php
+// Automatique: les conflits sont loggés
+$conflicts = debug_detect_variable_conflicts();
+
+// Afficher le rapport
+debug_show_conflicts_report();
+
+// Voir toutes les variables partagées
+$vars = debug_get_shared_variables();
+print_r($vars);
+?>
+```
+
+### Utiliser set_safe() pour Prévenir les Écrasements
+
+```php
+<?php
+// Définir une variable
+set_safe('userName', 'John'); // ✅ OK
+
+// Tentative d'écrasement (détectée en DEBUG)
+set_safe('userName', 'Jane'); // ⚠️ WARNING dans les logs, non écrasé
+
+// Forcer l'écrasement
+set_safe('userName', 'Jane', true); // ✅ OK, forcé
+?>
+```
+
+### Types de Conflits Détectés
+
+1. **Noms similaires** (>80% similarité)
+   - Exemple: `userName` vs `user_name`
+   - Risque de confusion
+
+2. **Même valeur** (duplication potentielle)
+   - Exemple: `$config1 = ['timeout' => 30]` et `$config2 = ['timeout' => 30]`
+   - Possible redondance
+
+### Exemple de Log
+
+```
+=== CONFLITS DE VARIABLES DÉTECTÉS ===
+[similar_names] userName <-> user_name : Noms très similaires, risque de confusion
+[same_value] config <-> settings : Même valeur, possible duplication
+```
+
+---
+
 ## 🔧 Nouvelles fonctionnalités (v2.1.1+)
 
 ### ✅ Chargement automatique de tous les fichiers
@@ -825,12 +1045,34 @@ Ce projet est distribué sous licence **MIT**.
 - Design sobre et élégant inspiré de Laravel/Symfony
 - Activation conditionnelle des pages HTML via `.env`
 
+**🧱 Système de Middleware Avancé:**
+- `middleware_validate_json()` - Validation automatique JSON avec champs requis/optionnels
+- `middleware_require_auth()` - Authentification JWT simplifiée
+- `middleware_require_role()` - Gestion des permissions et rôles
+- `middleware_validate_email()` - Validation d'email avec vérification DNS
+- `middleware_sanitize()` - Nettoyage automatique des données (XSS, injection)
+
+**🚦 Rate Limiting Intégré:**
+- `rate_limit()` - Limitation simple par IP (ex: 60 req/min)
+- `rate_limit_advanced()` - Configuration personnalisée par route
+- Headers HTTP standard (X-RateLimit-*, Retry-After)
+- Stockage en cache fichier (pas de BDD requise)
+- Protection contre brute force et DDoS
+
+**🔍 Détection Automatique de Conflits (DEBUG):**
+- `debug_detect_variable_conflicts()` - Détection de noms similaires
+- `debug_show_conflicts_report()` - Rapport dans les logs
+- `set_safe()` - set() avec avertissement si conflit
+- `debug_get_shared_variables()` - Liste toutes les variables partagées
+- Logs automatiques des conflits potentiels
+
 **🛡️ Améliorations:**
 - Gestion d'erreurs améliorée avec stack trace complète
 - Logging automatique avec timestamps
 - Support codes HTTP personnalisés (400, 401, 403, 404, 500...)
 - `logMessage()` pour logs personnalisés
 - Protection des variables système (préfixe `$_so_`)
+- loadEnv() appelé en premier pour garantir disponibilité des variables
 
 **🎨 Design:**
 - Page d'accueil sobre (fond noir #000, pas d'animations)
@@ -841,6 +1083,8 @@ Ce projet est distribué sous licence **MIT**.
 **📚 Documentation:**
 - Exemples complets d'utilisation set()/get()
 - Guide des bonnes pratiques
+- Documentation middlewares complète
+- Route d'exemple `/api/exemple_middlewares`
 - Documentation .env mise à jour
 
 *Dernière mise à jour : 31/10/2024*

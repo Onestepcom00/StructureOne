@@ -1495,4 +1495,616 @@ function getComposer()
 
     return $autoloadLoaded;
 }
+
+/**
+ * ============================================================================
+ * 🧱 SYSTÈME DE MIDDLEWARE ULTRA-SIMPLIFIÉ
+ * ============================================================================
+ * Un seul point d'entrée pour TOUS vos besoins de validation et sécurité
+ * 
+ * PRINCIPE : Une seule fonction middleware() qui gère TOUT
+ * 
+ * UTILISATION BASIQUE :
+ *   middleware(['json' => ['email', 'password']]);
+ * 
+ * UTILISATION AVANCÉE :
+ *   middleware([
+ *       'json' => ['email', 'password'],
+ *       'auth' => true,
+ *       'role' => ['admin'],
+ *       'rate' => [5, 300]
+ *   ]);
+ */
+
+/**
+ * MIDDLEWARE CENTRAL - Point d'entrée unique ultra-simple
+ * 
+ * @param array $config Configuration du middleware
+ * @return array|false Données validées ou false si erreur (avec réponse déjà envoyée)
+ * 
+ * @example Configuration disponible:
+ * 
+ * [
+ *   // 1. VALIDATION JSON (POST/PUT/PATCH)
+ *   'json' => ['email', 'password'],               // Champs requis
+ *   'optional' => ['remember' => false],           // Champs optionnels avec défaut
+ *   
+ *   // 2. AUTHENTIFICATION
+ *   'auth' => true,                                // Requiert JWT
+ *   
+ *   // 3. AUTORISATION (RÔLES)
+ *   'role' => ['admin', 'moderator'],              // Rôles autorisés
+ *   
+ *   // 4. RATE LIMITING
+ *   'rate' => [10, 60],                            // [max, secondes]
+ *   
+ *   // 5. VALIDATION PERSONNALISÉE
+ *   'validate' => function($data) {
+ *       if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+ *           return "Email invalide";
+ *       }
+ *       return true;
+ *   },
+ *   
+ *   // 6. SANITIZATION AUTOMATIQUE
+ *   'sanitize' => [
+ *       'email' => 'email',
+ *       'name' => 'string',
+ *       'age' => 'int'
+ *   ]
+ * ]
+ * 
+ * @example Usage simple:
+ * $data = middleware(['json' => ['email', 'password']]);
+ * if (!$data) exit;
+ * 
+ * @example Usage complet:
+ * $data = middleware([
+ *     'json' => ['email', 'password'],
+ *     'auth' => true,
+ *     'role' => ['admin'],
+ *     'rate' => [5, 300],
+ *     'sanitize' => ['email' => 'email']
+ * ]);
+ * if (!$data) exit;
+ */
+function middleware(array $config = []) {
+    $result = ['success' => true, 'data' => [], 'user' => null];
+    
+    // ========================================
+    // 1. RATE LIMITING (en premier)
+    // ========================================
+    if (isset($config['rate'])) {
+        $rate = $config['rate'];
+        $max = is_array($rate) ? $rate[0] : 60;
+        $window = is_array($rate) && isset($rate[1]) ? $rate[1] : 60;
+        
+        if (!rate_limit($max, $window)) {
+            echo api_response(429, "Trop de requêtes. Réessayez plus tard.");
+            return false;
+        }
+    }
+    
+    // ========================================
+    // 2. AUTHENTIFICATION JWT
+    // ========================================
+    if (isset($config['auth']) && $config['auth'] === true) {
+        $user = middleware_require_auth();
+        if (!$user) return false;
+        $result['user'] = $user;
+    }
+    
+    // ========================================
+    // 3. AUTORISATION (RÔLES)
+    // ========================================
+    if (isset($config['role'])) {
+        $roles = is_array($config['role']) ? $config['role'] : [$config['role']];
+        if (!middleware_require_role($roles)) return false;
+    }
+    
+    // ========================================
+    // 4. VALIDATION JSON
+    // ========================================
+    if (isset($config['json'])) {
+        $required = is_array($config['json']) ? $config['json'] : [];
+        $optional = isset($config['optional']) ? $config['optional'] : [];
+        
+        $data = middleware_validate_json($required, $optional);
+        if (!$data) return false;
+        
+        $result['data'] = $data;
+        
+        // ========================================
+        // 5. SANITIZATION AUTOMATIQUE
+        // ========================================
+        if (isset($config['sanitize'])) {
+            foreach ($config['sanitize'] as $field => $type) {
+                if (isset($result['data'][$field])) {
+                    $result['data'][$field] = middleware_sanitize($result['data'][$field], $type);
+                }
+            }
+        }
+        
+        // ========================================
+        // 6. VALIDATION PERSONNALISÉE
+        // ========================================
+        if (isset($config['validate']) && is_callable($config['validate'])) {
+            $validation = $config['validate']($result['data']);
+            if ($validation !== true) {
+                $message = is_string($validation) ? $validation : "Validation échouée";
+                echo api_response(400, $message);
+                return false;
+            }
+        }
+    }
+    
+    // Retourner les données ou le résultat complet
+    return empty($result['data']) ? $result : $result['data'];
+}
+
+/**
+ * MIDDLEWARE RAPIDE - Versions raccourcies pour cas simples
+ */
+
+/**
+ * Middleware JSON uniquement
+ */
+function middleware_json(array $required = [], array $optional = []) {
+    return middleware(['json' => $required, 'optional' => $optional]);
+}
+
+/**
+ * Middleware Auth uniquement
+ */
+function middleware_auth() {
+    $result = middleware(['auth' => true]);
+    return $result ? $result['user'] : false;
+}
+
+/**
+ * Middleware Rate limit uniquement
+ */
+function middleware_rate($max = 60, $window = 60) {
+    return middleware(['rate' => [$max, $window]]);
+}
+
+/**
+ * ============================================================================
+ * MIDDLEWARES INDIVIDUELS (pour usage avancé)
+ * ============================================================================
+ */
+
+/**
+ * Middleware : Valider les données JSON entrantes
+ * 
+ * @param array $requiredFields Champs requis
+ * @param array $optionalFields Champs optionnels avec valeurs par défaut
+ * @return array|false Données validées ou false si erreur
+ * 
+ * @example 
+ * $data = middleware_validate_json(['email', 'password'], ['remember' => false]);
+ * if (!$data) exit; // L'erreur est déjà envoyée
+ */
+function middleware_validate_json(array $requiredFields = [], array $optionalFields = []) {
+    // Vérifier la méthode
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $_SERVER['REQUEST_METHOD'] !== 'PUT' && $_SERVER['REQUEST_METHOD'] !== 'PATCH') {
+        echo api_response(405, "Méthode non autorisée");
+        return false;
+    }
+    
+    // Récupérer et decoder le JSON
+    $jsonInput = file_get_contents('php://input');
+    $data = json_decode($jsonInput, true);
+    
+    // Vérifier si le JSON est valide
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        echo api_response(400, "JSON invalide", ['error' => json_last_error_msg()]);
+        return false;
+    }
+    
+    // Vérifier les champs requis
+    $missingFields = [];
+    foreach ($requiredFields as $field) {
+        if (!isset($data[$field]) || $data[$field] === '' || $data[$field] === null) {
+            $missingFields[] = $field;
+        }
+    }
+    
+    if (!empty($missingFields)) {
+        echo api_response(400, "Champs manquants", [
+            'missing_fields' => $missingFields,
+            'required' => $requiredFields
+        ]);
+        return false;
+    }
+    
+    // Ajouter les champs optionnels avec valeurs par défaut
+    foreach ($optionalFields as $field => $defaultValue) {
+        if (!isset($data[$field])) {
+            $data[$field] = $defaultValue;
+        }
+    }
+    
+    return $data;
+}
+
+/**
+ * Middleware : Vérifier l'authentification JWT
+ * 
+ * @param bool $required Si true, retourne 401 si pas de token
+ * @return array|false Données du token ou false
+ * 
+ * @example
+ * $user = middleware_require_auth();
+ * if (!$user) exit; // Non authentifié
+ */
+function middleware_require_auth($required = true) {
+    global $JWT_HTTP_TOKEN;
+    
+    $tokenData = jwt_validate($JWT_HTTP_TOKEN);
+    
+    if (!$tokenData && $required) {
+        echo api_response(401, "Authentification requise", [
+            'error' => 'Token manquant ou invalide'
+        ]);
+        return false;
+    }
+    
+    return $tokenData;
+}
+
+/**
+ * Middleware : Vérifier les rôles/permissions
+ * 
+ * @param array $allowedRoles Rôles autorisés
+ * @param string $roleField Nom du champ role dans le token (défaut: 'role')
+ * @return bool True si autorisé
+ * 
+ * @example
+ * if (!middleware_require_role(['admin', 'moderator'])) exit;
+ */
+function middleware_require_role(array $allowedRoles, $roleField = 'role') {
+    $tokenData = middleware_require_auth();
+    
+    if (!$tokenData) {
+        return false;
+    }
+    
+    $userRole = $tokenData[$roleField] ?? null;
+    
+    if (!$userRole || !in_array($userRole, $allowedRoles)) {
+        echo api_response(403, "Accès refusé", [
+            'error' => 'Rôle insuffisant',
+            'required_roles' => $allowedRoles,
+            'your_role' => $userRole
+        ]);
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * Middleware : Validation d'email
+ * 
+ * @param string $email Email à valider
+ * @param bool $checkDomain Vérifier si le domaine existe
+ * @return bool
+ */
+function middleware_validate_email($email, $checkDomain = false) {
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return false;
+    }
+    
+    if ($checkDomain) {
+        $domain = explode('@', $email)[1] ?? '';
+        return !empty($domain) && checkdnsrr($domain, 'MX');
+    }
+    
+    return true;
+}
+
+/**
+ * Middleware : Sanitizer de données
+ * 
+ * @param mixed $data Données à nettoyer
+ * @param string $type Type de nettoyage (string, email, url, int, float, html)
+ * @return mixed Données nettoyées
+ */
+function middleware_sanitize($data, $type = 'string') {
+    switch ($type) {
+        case 'email':
+            return filter_var($data, FILTER_SANITIZE_EMAIL);
+        case 'url':
+            return filter_var($data, FILTER_SANITIZE_URL);
+        case 'int':
+            return filter_var($data, FILTER_SANITIZE_NUMBER_INT);
+        case 'float':
+            return filter_var($data, FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
+        case 'html':
+            return htmlspecialchars($data, ENT_QUOTES, 'UTF-8');
+        case 'string':
+        default:
+            return db_escape($data);
+    }
+}
+
+/**
+ * ============================================================================
+ * 🚦 SYSTÈME DE RATE LIMITING (LIMITATION DE TAUX)
+ * ============================================================================
+ * Protection contre les abus et attaques par force brute
+ */
+
+/**
+ * Rate Limiter : Limiter les requêtes par IP
+ * 
+ * @param int $maxRequests Nombre max de requêtes
+ * @param int $timeWindow Fenêtre de temps en secondes
+ * @param string $identifier Identifiant unique (défaut: IP)
+ * @return bool True si autorisé, false si limité
+ * 
+ * @example
+ * // Max 10 requêtes par minute
+ * if (!rate_limit(10, 60)) {
+ *     echo api_response(429, "Trop de requêtes");
+ *     exit;
+ * }
+ */
+function rate_limit($maxRequests = 60, $timeWindow = 60, $identifier = null) {
+    // Utiliser l'IP par défaut
+    if ($identifier === null) {
+        $identifier = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    }
+    
+    // Créer une clé unique
+    $key = 'rate_limit_' . md5($identifier . '_' . $_SERVER['REQUEST_URI']);
+    
+    // Fichier de cache pour stocker les compteurs
+    $cacheDir = __DIR__ . '/core/cache';
+    if (!is_dir($cacheDir)) {
+        mkdir($cacheDir, 0755, true);
+    }
+    
+    $cacheFile = $cacheDir . '/' . $key . '.json';
+    
+    // Lire les données existantes
+    $data = [];
+    if (file_exists($cacheFile)) {
+        $content = file_get_contents($cacheFile);
+        $data = json_decode($content, true) ?: [];
+    }
+    
+    $now = time();
+    $windowStart = $now - $timeWindow;
+    
+    // Nettoyer les anciennes requêtes
+    $data = array_filter($data, function($timestamp) use ($windowStart) {
+        return $timestamp > $windowStart;
+    });
+    
+    // Compter les requêtes dans la fenêtre
+    $requestCount = count($data);
+    
+    // Vérifier la limite
+    if ($requestCount >= $maxRequests) {
+        // Enregistrer dans les logs si DEBUG
+        if (env('DEBUG_MODE') === 'true') {
+            error_log("Rate limit exceeded for: $identifier on " . $_SERVER['REQUEST_URI']);
+        }
+        
+        // Ajouter header Retry-After
+        $oldestRequest = min($data);
+        $retryAfter = ($oldestRequest + $timeWindow) - $now;
+        header("Retry-After: $retryAfter");
+        header("X-RateLimit-Limit: $maxRequests");
+        header("X-RateLimit-Remaining: 0");
+        header("X-RateLimit-Reset: " . ($oldestRequest + $timeWindow));
+        
+        return false;
+    }
+    
+    // Ajouter la requête actuelle
+    $data[] = $now;
+    
+    // Sauvegarder
+    file_put_contents($cacheFile, json_encode($data));
+    
+    // Ajouter headers informatifs
+    header("X-RateLimit-Limit: $maxRequests");
+    header("X-RateLimit-Remaining: " . ($maxRequests - count($data)));
+    header("X-RateLimit-Reset: " . ($now + $timeWindow));
+    
+    return true;
+}
+
+/**
+ * Rate Limiter Avancé : Par route et méthode
+ * 
+ * @param array $limits Configuration des limites par route
+ * @return bool
+ * 
+ * @example
+ * rate_limit_advanced([
+ *     '/api/login' => ['max' => 5, 'window' => 300],  // 5 par 5min
+ *     '/api/register' => ['max' => 3, 'window' => 3600], // 3 par heure
+ *     'default' => ['max' => 60, 'window' => 60] // 60 par minute
+ * ]);
+ */
+function rate_limit_advanced(array $limits) {
+    $route = $_SERVER['REQUEST_URI'];
+    
+    // Chercher la configuration pour cette route
+    $config = $limits[$route] ?? $limits['default'] ?? ['max' => 60, 'window' => 60];
+    
+    return rate_limit($config['max'], $config['window']);
+}
+
+/**
+ * ============================================================================
+ * 🔍 DÉTECTION AUTOMATIQUE DES CONFLITS DE VARIABLES (MODE DEBUG)
+ * ============================================================================
+ * Aide au debugging en détectant les conflits de variables
+ */
+
+/**
+ * Détecter les conflits de variables dans $GLOBALS
+ * 
+ * @param array $ignoredPrefixes Préfixes à ignorer (ex: ['_so_', 'GLOBALS'])
+ * @return array Liste des conflits potentiels
+ */
+function debug_detect_variable_conflicts($ignoredPrefixes = ['_so_', 'GLOBALS', '_GET', '_POST', '_SERVER', '_ENV', '_FILES', '_COOKIE', '_REQUEST', '_SESSION']) {
+    // Uniquement en mode DEBUG
+    if (env('DEBUG_MODE') !== 'true') {
+        return [];
+    }
+    
+    $conflicts = [];
+    $variables = [];
+    
+    // Analyser toutes les variables globales
+    foreach ($GLOBALS as $name => $value) {
+        // Ignorer les préfixes système
+        $shouldIgnore = false;
+        foreach ($ignoredPrefixes as $prefix) {
+            if (strpos($name, $prefix) === 0) {
+                $shouldIgnore = true;
+                break;
+            }
+        }
+        
+        if ($shouldIgnore) {
+            continue;
+        }
+        
+        // Détecter les doublons ou similitudes
+        foreach ($variables as $existingName => $existingValue) {
+            // Vérifier similarité de nom (peut causer confusion)
+            $similarity = 0;
+            similar_text(strtolower($name), strtolower($existingName), $similarity);
+            
+            if ($similarity > 80 && $name !== $existingName) {
+                $conflicts[] = [
+                    'type' => 'similar_names',
+                    'var1' => $name,
+                    'var2' => $existingName,
+                    'similarity' => round($similarity, 2),
+                    'warning' => "Noms très similaires, risque de confusion"
+                ];
+            }
+            
+            // Vérifier même valeur (possible duplication)
+            if ($value === $existingValue && !is_resource($value) && !is_object($value)) {
+                $conflicts[] = [
+                    'type' => 'same_value',
+                    'var1' => $name,
+                    'var2' => $existingName,
+                    'value' => is_string($value) ? $value : gettype($value),
+                    'warning' => "Même valeur, possible duplication"
+                ];
+            }
+        }
+        
+        $variables[$name] = $value;
+    }
+    
+    return $conflicts;
+}
+
+/**
+ * Afficher un rapport de conflits en mode DEBUG
+ * 
+ * @return void
+ */
+function debug_show_conflicts_report() {
+    if (env('DEBUG_MODE') !== 'true') {
+        return;
+    }
+    
+    $conflicts = debug_detect_variable_conflicts();
+    
+    if (empty($conflicts)) {
+        return;
+    }
+    
+    // Logger les conflits
+    error_log("=== CONFLITS DE VARIABLES DÉTECTÉS ===");
+    foreach ($conflicts as $conflict) {
+        error_log(sprintf(
+            "[%s] %s <-> %s : %s",
+            $conflict['type'],
+            $conflict['var1'],
+            $conflict['var2'],
+            $conflict['warning']
+        ));
+    }
+    
+    // Si activé, afficher dans les headers (uniquement en dev)
+    if (env('DEBUG_MODE') === 'true' && !headers_sent()) {
+        header('X-Debug-Variable-Conflicts: ' . count($conflicts));
+    }
+}
+
+/**
+ * Wrapper pour set() avec détection de conflit
+ * 
+ * @param string $name Nom de la variable
+ * @param mixed $value Valeur
+ * @param bool $force Forcer même si conflit détecté
+ * @return bool
+ */
+function set_safe($name, $value, $force = false) {
+    // En mode DEBUG, vérifier les conflits
+    if (env('DEBUG_MODE') === 'true' && !$force) {
+        if (has($name)) {
+            $existingValue = get($name);
+            if ($existingValue !== $value) {
+                error_log("⚠️ WARNING: Variable '$name' déjà définie avec une valeur différente");
+                error_log("  Ancienne valeur: " . var_export($existingValue, true));
+                error_log("  Nouvelle valeur: " . var_export($value, true));
+                
+                if (!$force) {
+                    return false;
+                }
+            }
+        }
+    }
+    
+    set($name, $value);
+    return true;
+}
+
+/**
+ * Obtenir un rapport complet des variables partagées
+ * 
+ * @return array
+ */
+function debug_get_shared_variables() {
+    if (env('DEBUG_MODE') !== 'true') {
+        return [];
+    }
+    
+    $ignoredPrefixes = ['_so_', 'GLOBALS', '_GET', '_POST', '_SERVER', '_ENV', '_FILES', '_COOKIE', '_REQUEST', '_SESSION'];
+    $sharedVars = [];
+    
+    foreach ($GLOBALS as $name => $value) {
+        $shouldIgnore = false;
+        foreach ($ignoredPrefixes as $prefix) {
+            if (strpos($name, $prefix) === 0) {
+                $shouldIgnore = true;
+                break;
+            }
+        }
+        
+        if (!$shouldIgnore && !is_resource($value)) {
+            $sharedVars[$name] = [
+                'type' => gettype($value),
+                'value' => is_object($value) ? get_class($value) : (is_array($value) ? 'array[' . count($value) . ']' : $value)
+            ];
+        }
+    }
+    
+    return $sharedVars;
+}
+
 ?>
