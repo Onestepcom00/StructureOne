@@ -1,22 +1,23 @@
 <?php
 /**
+ * Route de test versionnée v1
  * 
- * 
- * Ceci est un fichier d'API d'exemple , soyez libre de le tester
- * 
- * 
+ * MÉTHODE SIMPLE: Utilisez get() pour récupérer des variables
  */
 
- // Autoriser la methode GET
- require_method("GET");
+// Autoriser la methode GET
+require_method("GET");
 
- try{
-    // afficher une reponse
-    echo api_response(200,getHello(),null);
- }catch(Exception $e){
+try {
+    // Récupérer les variables avec get()
+    $hook = get('hook');
+    
+    // Les fonctions sont automatiquement accessibles
+    $message = getHello();
+    
+    echo api_response(200, "$message and $hook", null);
+} catch(Exception $e) {
     // Afficher les erreurs en fonction du debug 
     echo getError($e);
- }
-
-
+}
 ?>

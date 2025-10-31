@@ -3,7 +3,7 @@
 
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.1.0-blueviolet?style=for-the-badge&logo=github" />
+  <img src="https://img.shields.io/badge/Version-2.1.1+-blueviolet?style=for-the-badge&logo=github" />
   <img src="https://img.shields.io/badge/PHP-7.4%2B-777BB4?style=for-the-badge&logo=php" />
   <img src="https://img.shields.io/badge/MySQL-8.0%2B-4479A1?style=for-the-badge&logo=mysql" />
   <img src="https://img.shields.io/badge/License-MIT-success?style=for-the-badge&logo=open-source-initiative" />
@@ -28,12 +28,15 @@ Cette compatibilité universelle a été développée pour garantir une **instal
 
 ## ✨ Fonctionnalités Clés
 
-- 🔧 **Versioning d’API** : support natif pour `/api/v1/`, `/api/v2/`  
+- 🔧 **Versioning d'API** : support natif pour `/api/v1/`, `/api/v2/`  
 - 🧠 **Compatibilité multi-serveurs** : Apache & Nginx  
 - 🛡️ **Sécurité avancée** : protection automatique des fichiers sensibles  
 - 🧩 **Support Composer** : StructureOne a été conçue pour être compatible avec Composer 
 - 🧰 **Gestion des erreurs et du debug** intégrée  
 - ♻️ **Rétrocompatibilité garantie** avec les versions précédentes  
+- 🎨 **Interface HTML stylée** : Pages d'erreur et d'accueil professionnelles (comme Laravel/Symfony)
+- ⚡ **Variables automatiques** : Partage automatique entre fichiers, sans besoin de `global`
+- 📝 **Logging avancé** : Traçabilité complète avec timestamps
 
 StructureOne vise à évoluer continuellement. Pour les utilisateurs en production, chaque mise à jour restera compatible avec vos versions précédentes, sauf correctifs de sécurité critiques.
 
@@ -154,13 +157,36 @@ python3 install.py
 Les routes API sont automatiquement gérées.  
 Exemple : route `/api/test`  
 
-Créez simplement un dossier `test` dans `/core/routes/` ou `core/versions/VOTRE_VERSION/`avec :
+Créez simplement un dossier `test` dans `/core/routes/` ou `core/versions/VOTRE_VERSION/` avec vos fichiers PHP.
 
-peu importe les nombres des fichiers que vous allez creer dans ce dossier , le routeur va se charger de les prendre en compte.
+✅ **Chargement automatique de tous les fichiers** : Le routeur charge automatiquement TOUS les fichiers `.php` présents dans le dossier de la route :
+- `functions.php` est chargé en premier (si présent)
+- Les autres fichiers sont chargés par ordre alphabétique
+- `index.php` est chargé en dernier
 
-⚠️ Inutile d’inclure `loader.php` et `config.php`, le routeur s’en charge déjà.  
+⚠️ Inutile d'inclure `loader.php` et `config.php`, le routeur s'en charge déjà.  
 
-> A La base StructureOne gère pour vous les taches plus flemmant , celui d'ajouter manuellement des routes par case .
+> StructureOne gère automatiquement le chargement de tous vos fichiers, plus besoin de les inclure manuellement !
+
+### 🚫 Variables réservées - IMPORTANT
+
+Pour éviter les conflits, **n'utilisez JAMAIS** les variables suivantes dans vos routes :
+- Toutes les variables préfixées par `$_so_` (réservées au système)
+- `$GLOBALS['JWT_HTTP_TOKEN']` (à lire uniquement, ne pas écraser)
+
+**✅ Bonnes pratiques de nommage :**
+```php
+// ✅ BON - Noms descriptifs et contextualisés
+$userData = $_POST['data'];
+$dbResult = db_find(...);
+$apiResponseData = [...];
+
+// ❌ MAUVAIS - Noms trop génériques ou réservés
+$data = $_POST['data'];
+$_so_routeName = "test"; // INTERDIT !
+```
+
+📚 Consultez `/core/routes/exemple_bonnes_pratiques/` pour un exemple complet.
 
 ### Exemple de réponse `/api/test` :
 
@@ -615,13 +641,146 @@ echo api_response(200, "Dashboard administrateur", [
 
 ---
 
+## 🔧 Nouvelles fonctionnalités (v2.1.1+)
+
+### ✅ Chargement automatique de tous les fichiers
+**RÉSOLU** ✔️ - Le système charge maintenant automatiquement TOUS les fichiers PHP d'une route (pas seulement `index.php` et `functions.php`)
+
+### ✅ Variables Partagées Ultra Simplifiées
+**NOUVEAU** ✨ - Fonctions `set()` et `get()` pour partager facilement des variables entre fichiers !
+
+**Dans `functions.php` - Définir les variables :**
+```php
+// ✅ ULTRA SIMPLE avec set()
+set('name', 'StructureOne');
+set('version', '2.1.1');
+set('config', ['timeout' => 30, 'retries' => 3]);
+```
+
+**Dans `index.php` - Utiliser les variables :**
+```php
+// ✅ ULTRA SIMPLE avec get()
+$name = get('name');
+$config = get('config');
+
+echo api_response(200, "Projet: $name", $config);
+```
+
+**Fonctions disponibles :**
+- `set($nom, $valeur)` - Définir une variable partagée
+- `get($nom, $defaut)` - Récupérer une variable (avec valeur par défaut)
+- `has($nom)` - Vérifier si une variable existe
+- `setMany(['nom' => 'valeur', ...])` - Définir plusieurs variables
+
+**Exemple complet :**
+```php
+// core/routes/users/functions.php
+<?php
+// Définir plusieurs variables
+set('tableName', 'users');
+set('perPage', 20);
+setMany([
+    'allowedRoles' => ['admin', 'user'],
+    'cacheEnabled' => true
+]);
+
+// Fonction helper
+function users_validate($email) {
+    return filter_var($email, FILTER_VALIDATE_EMAIL);
+}
+?>
+
+// core/routes/users/index.php
+<?php
+require_method('GET');
+
+try {
+    // Récupérer les variables
+    $table = get('tableName');
+    $limit = get('perPage');
+    $roles = get('allowedRoles', []);
+    
+    // Vérifier si une variable existe
+    if (has('cacheEnabled')) {
+        // Utiliser le cache...
+    }
+    
+    // Utiliser la fonction
+    $isValid = users_validate('test@example.com');
+    
+    $users = db_find("SELECT * FROM {$table} LIMIT ?", [$limit]);
+    echo api_response(200, "Users list", $users);
+} catch(Exception $e) {
+    echo getError($e);
+}
+?>
+```
+
+### ✅ Pages HTML Professionnelles (inspirées Laravel/Symfony)
+**NOUVEAU** 🎨 - Interfaces dark mode sobres et élégantes
+
+**Activer dans `.env` :**
+```env
+DEBUG_MODE=true              # Activer le mode debug
+ERROR_DISPLAY_HTML=true      # Page d'erreur HTML stylée
+HOMEPAGE_DISPLAY_HTML=true   # Page d'accueil HTML stylée
+```
+
+**Page d'Accueil (`/`) :**
+- Design sobre et professionnel (fond noir pur #000)
+- Informations système (version, debug, serveur)
+- Exemples d'utilisation des routes
+- Versions API disponibles
+- Pas d'animations distrayantes
+- 100% Responsive
+
+**Page d'Erreur :**
+- Stack trace détaillée et lisible
+- Extrait de code avec ligne d'erreur
+- Suggestions de résolution
+- Informations de debug complètes
+- Design cohérent avec la homepage
+
+**⚠️ Important :** Les pages HTML ne s'affichent QUE si activées dans `.env`. Sinon, réponse JSON classique.
+
+### ✅ Protection contre les conflits de variables
+**RÉSOLU** ✔️ - Toutes les variables système utilisent maintenant le préfixe `$_so_` pour éviter les conflits avec vos routes
+
+**Liste des variables système protégées :**
+- `$_so_requestUri` - URI de la requête
+- `$_so_requestMethod` - Méthode HTTP
+- `$_so_routeName` - Nom de la route
+- `$_so_routeInfo` - Informations de version
+- `$_so_loadResult` - Résultat du chargement
+- Et toutes les variables internes du loader
+
+**Comment éviter les conflits :**
+```php
+// ✅ BON - Variables descriptives et contextualisées
+$userData = json_decode(file_get_contents('php://input'), true);
+$dbResult = db_find("SELECT * FROM users WHERE id = ?", [$userId]);
+$apiResponseData = ['success' => true];
+
+// ❌ MAUVAIS - Variables génériques qui peuvent causer des problèmes
+$data = $_POST;
+$result = db_find(...);
+$response = [];
+
+// ❌ INTERDIT - Variables réservées au système
+$_so_routeName = "test"; // NE JAMAIS FAIRE ÇA !
+```
+
+📚 **Exemple complet** : Consultez `/core/routes/exemple_bonnes_pratiques/` pour voir toutes les bonnes pratiques en action.
+
+---
+
 ## ⚙️ Futures Mises à Jour
 
-- ⚡ **Inclusion automatique** de tous les fichiers de la route  
 - 🧱 **Middleware avancé** pour la validation et la sécurité  
 - 🧠 **Gestion du cache avec Redis**  
 - 🐳 **Déploiement simplifié avec Docker**  
-- 🧪 **Tests automatisés avec PHPUnit**  avec Composer. 
+- 🧪 **Tests automatisés avec PHPUnit** avec Composer
+- 🔍 **Détection automatique des conflits de variables** en mode DEBUG
 
 ---
 
@@ -653,5 +812,37 @@ Ce projet est distribué sous licence **MIT**.
 ---
 
 *Dernière mise à jour : 22/10/2025*
+
+---
+
+**📝 Changelog v2.1.1+ (31 Octobre 2024):**
+
+**✨ Nouvelles Fonctionnalités:**
+- `set()` et `get()` - Partage ultra simple de variables entre fichiers
+- `has()` - Vérifier l'existence d'une variable
+- `setMany()` - Définir plusieurs variables en une fois
+- Pages HTML professionnelles dark mode (homepage + error page)
+- Design sobre et élégant inspiré de Laravel/Symfony
+- Activation conditionnelle des pages HTML via `.env`
+
+**🛡️ Améliorations:**
+- Gestion d'erreurs améliorée avec stack trace complète
+- Logging automatique avec timestamps
+- Support codes HTTP personnalisés (400, 401, 403, 404, 500...)
+- `logMessage()` pour logs personnalisés
+- Protection des variables système (préfixe `$_so_`)
+
+**🎨 Design:**
+- Page d'accueil sobre (fond noir #000, pas d'animations)
+- Page d'erreur détaillée avec suggestions
+- 100% Responsive (mobile, tablet, desktop)
+- Logo uniquement en header (design épuré)
+
+**📚 Documentation:**
+- Exemples complets d'utilisation set()/get()
+- Guide des bonnes pratiques
+- Documentation .env mise à jour
+
+*Dernière mise à jour : 31/10/2024*
 
 ---

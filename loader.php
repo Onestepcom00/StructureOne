@@ -184,26 +184,74 @@ function globalErrorHandler($errno, $errstr, $errfile, $errline) {
 }
 
 /**
- * Gestionnaire d'exceptions global
+ * Gestionnaire d'exceptions global - VERSION AMÉLIORÉE
+ * Centralise toute la gestion des exceptions avec traçabilité complète
+ * Support de l'affichage HTML stylé si ERROR_DISPLAY_HTML est activé
  */
 function globalExceptionHandler($exception) {
     $debugMode = env('DEBUG_MODE') === 'true' || env('DEBUG_MODE') === true;
+    $htmlDisplay = env('ERROR_DISPLAY_HTML') === 'true' || env('ERROR_DISPLAY_HTML') === true;
     
-    // Log de l'exception
-    error_log("EXCEPTION: " . $exception->getMessage() . " in " . $exception->getFile() . " on line " . $exception->getLine());
+    // Log de l'exception avec timestamp
+    $logMessage = sprintf(
+        "[%s] EXCEPTION: %s in %s:%d | Trace: %s",
+        date('Y-m-d H:i:s'),
+        $exception->getMessage(),
+        $exception->getFile(),
+        $exception->getLine(),
+        $debugMode ? $exception->getTraceAsString() : 'hidden'
+    );
+    error_log($logMessage);
     
+    // Si affichage HTML activé et mode debug
+    if ($htmlDisplay && $debugMode) {
+        // Préparer les variables pour la page HTML
+        $errorType = get_class($exception);
+        $errorTitle = 'Exception Détectée';
+        $errorMessage = $exception->getMessage();
+        $errorFile = $exception->getFile();
+        $errorLine = $exception->getLine();
+        $errorTrace = $exception->getTrace();
+        $errorCode = null;
+        
+        // Essayer de lire le code autour de la ligne d'erreur
+        if (file_exists($errorFile)) {
+            $fileLines = file($errorFile);
+            $start = max(0, $errorLine - 3);
+            $end = min(count($fileLines), $errorLine + 2);
+            $codeLines = array_slice($fileLines, $start, $end - $start);
+            $errorCode = '';
+            foreach ($codeLines as $i => $line) {
+                $lineNum = $start + $i + 1;
+                $marker = ($lineNum == $errorLine) ? '→' : ' ';
+                $errorCode .= sprintf("%s %4d | %s", $marker, $lineNum, $line);
+            }
+        }
+        
+        // Envoyer les headers HTML
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: text/html; charset=utf-8');
+        }
+        
+        // Inclure la page d'erreur HTML
+        include __DIR__ . '/core/error_page.php';
+        exit;
+    }
+    
+    // Sinon, affichage JSON classique
     $response = [
         'status' => 'error',
         'message' => 'Internal Server Error'
     ];
     
-    // Ajouter les détails de débogage si activé
     if ($debugMode) {
         $response['debug'] = [
-            'exception' => get_class($exception),
+            'exception_type' => get_class($exception),
             'message' => $exception->getMessage(),
             'file' => basename($exception->getFile()),
-            'line' => $exception->getLine()
+            'line' => $exception->getLine(),
+            'trace' => array_slice($exception->getTrace(), 0, 5)
         ];
     }
     
@@ -212,7 +260,7 @@ function globalExceptionHandler($exception) {
         header('Content-Type: application/json; charset=utf-8');
     }
     
-    echo json_encode($response, JSON_UNESCAPED_UNICODE);
+    echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     exit;
 }
 
@@ -274,18 +322,20 @@ function detectRouteAndVersion($requestUri, $baseAppDir) {
  * Supporte rétrocompatibilité + auto-chargement intelligent
  */
 function loadRouteFiles($routeName, $version = 'legacy', $basePath = 'core/routes') {
-    $routePath = "{$basePath}/{$routeName}";
+    global $_so_routePath_global;
     
-    if (!is_dir($routePath)) {
+    $_so_routePath_global = "{$basePath}/{$routeName}";
+    
+    if (!is_dir($_so_routePath_global)) {
         return [
             'success' => false,
             'error' => "Route '{$routeName}' not found",
             'version' => $version,
-            'searched_path' => $routePath
+            'searched_path' => $_so_routePath_global
         ];
     }
     
-    $indexFile = "{$routePath}/index.php";
+    $indexFile = "{$_so_routePath_global}/index.php";
     
     if (!file_exists($indexFile)) {
         return [
@@ -298,13 +348,14 @@ function loadRouteFiles($routeName, $version = 'legacy', $basePath = 'core/route
     
     try {
         // CHARGEMENT INTELLIGENT DE TOUS LES FICHIERS
-        $loadResult = loadAllRouteFiles($routePath, $version);
+        $loadResult = loadAllRouteFiles($_so_routePath_global, $version);
         
         if (!$loadResult['success']) {
             return $loadResult;
         }
         
-        // Inclure le fichier index principal en dernier (comme avant)
+        // Inclure le fichier index principal en dernier
+        // Les variables définies dans functions.php via $GLOBALS seront accessibles
         require $indexFile;
         
         return [
@@ -322,61 +373,74 @@ function loadRouteFiles($routeName, $version = 'legacy', $basePath = 'core/route
 /**
  * NOUVELLE FONCTION - Charge automatiquement tous les fichiers PHP du dossier
  * Maintient la rétrocompatibilité avec l'ancien système
+ * Note: Variables préfixées $_so_ pour éviter conflits avec routes utilisateur
  */
 function loadAllRouteFiles($routePath, $version) {
-    $loadedFiles = [];
+    $_so_loadedFiles = [];
     
     if (!is_dir($routePath)) {
         return [
             'success' => false,
             'error' => "Route path not found: {$routePath}",
-            'loaded_files' => $loadedFiles
+            'loaded_files' => $_so_loadedFiles
         ];
     }
     
     // Récupérer tous les fichiers PHP du dossier (sauf index.php qui sera chargé après)
-    $files = scandir($routePath);
-    $phpFiles = [];
+    $_so_files = scandir($routePath);
+    if ($_so_files === false) {
+        return [
+            'success' => false,
+            'error' => "Unable to read directory: {$routePath}",
+            'loaded_files' => $_so_loadedFiles
+        ];
+    }
     
-    foreach ($files as $file) {
-        if ($file !== '.' && $file !== '..' && 
-            $file !== 'index.php' && 
-            pathinfo($file, PATHINFO_EXTENSION) === 'php') {
-            $phpFiles[] = $file;
+    $_so_phpFiles = [];
+    
+    foreach ($_so_files as $_so_file) {
+        if ($_so_file !== '.' && $_so_file !== '..' && 
+            $_so_file !== 'index.php' && 
+            pathinfo($_so_file, PATHINFO_EXTENSION) === 'php' &&
+            is_file("{$routePath}/{$_so_file}")) { // Vérifier que c'est bien un fichier
+            $_so_phpFiles[] = $_so_file;
         }
     }
     
     // TRI INTELLIGENT pour maintenir l'ordre de chargement
     // 1. functions.php en premier (rétrocompatibilité)
     // 2. Les autres fichiers par ordre alphabétique
-    $priorityFiles = [];
-    $otherFiles = [];
+    $_so_priorityFiles = [];
+    $_so_otherFiles = [];
     
-    foreach ($phpFiles as $file) {
-        if ($file === 'functions.php') {
-            $priorityFiles[] = $file;
+    foreach ($_so_phpFiles as $_so_file) {
+        if ($_so_file === 'functions.php') {
+            $_so_priorityFiles[] = $_so_file;
         } else {
-            $otherFiles[] = $file;
+            $_so_otherFiles[] = $_so_file;
         }
     }
     
     // Trier les autres fichiers par ordre alphabétique
-    sort($otherFiles);
-    $sortedFiles = array_merge($priorityFiles, $otherFiles);
+    sort($_so_otherFiles);
+    $_so_sortedFiles = array_merge($_so_priorityFiles, $_so_otherFiles);
     
-    // CHARGEMENT DES FICHIERS
-    foreach ($sortedFiles as $file) {
-        $filePath = "{$routePath}/{$file}";
-        if (file_exists($filePath)) {
+    // CHARGEMENT DES FICHIERS - MÉTHODE SIMPLE ET FIABLE
+    // Les fichiers sont chargés normalement, les fonctions sont automatiquement globales
+    // Pour les variables, utilisez $GLOBALS dans les fichiers inclus
+    foreach ($_so_sortedFiles as $_so_file) {
+        $_so_filePath = "{$routePath}/{$_so_file}";
+        if (file_exists($_so_filePath) && is_readable($_so_filePath)) {
             try {
-                require $filePath;
-                $loadedFiles[] = $file;
+                // Charger le fichier simplement
+                require $_so_filePath;
+                $_so_loadedFiles[] = $_so_file;
             } catch (Exception $e) {
                 return [
                     'success' => false,
-                    'error' => "Error loading file '{$file}': " . $e->getMessage(),
-                    'failed_file' => $file,
-                    'loaded_files' => $loadedFiles
+                    'error' => "Error loading file '{$_so_file}': " . $e->getMessage(),
+                    'failed_file' => $_so_file,
+                    'loaded_files' => $_so_loadedFiles
                 ];
             }
         }
@@ -384,8 +448,8 @@ function loadAllRouteFiles($routePath, $version) {
     
     return [
         'success' => true,
-        'loaded_files' => $loadedFiles,
-        'total_files' => count($sortedFiles)
+        'loaded_files' => $_so_loadedFiles,
+        'total_files' => count($_so_sortedFiles)
     ];
 }
 
@@ -544,11 +608,13 @@ function loadEnv($envPath = null) {
             
             /**
              * 
-             * Definir la variable d'environnement si elle n'existe pas deja
+             * Définir la variable d'environnement (TOUJOURS écraser avec .env)
+             * Le fichier .env a toujours la priorité
              * 
              */
-            if (!empty($key) && !array_key_exists($key, $_ENV)) {
+            if (!empty($key)) {
                 $_ENV[$key] = $value;
+                $_SERVER[$key] = $value;
                 putenv("$key=$value");
             }
         }
@@ -1281,21 +1347,122 @@ function require_method_in($expectedMethods, $errorResponse = null) {
 }
 
 /**
- *
- *
- *
- * LA FONCTION POUR GERER LES ERREURS 
- *
- *
-*/
-function getError($e) {
-    $debug_info = env('DEBUG_MODE') === 'true' ? [
-        'error' => $e->getMessage(),
-        'file' => $e->getFile(),
-        'line' => $e->getLine()
-    ] : null;
+ * ============================================================================
+ * FONCTIONS HELPERS POUR VARIABLES PARTAGÉES (AUTOMATIQUE)
+ * ============================================================================
+ * Ces fonctions simplifient le partage de variables entre functions.php et index.php
+ */
 
-    return api_response(500, null, $debug_info);
+/**
+ * Définir une variable partagée (utilisable dans functions.php)
+ * 
+ * @param string $name Nom de la variable
+ * @param mixed $value Valeur de la variable
+ * 
+ * @example set('userName', 'John Doe');
+ * @example set('config', ['timeout' => 30]);
+ */
+function set($name, $value) {
+    $GLOBALS[$name] = $value;
+}
+
+/**
+ * Récupérer une variable partagée (utilisable dans index.php)
+ * 
+ * @param string $name Nom de la variable
+ * @param mixed $default Valeur par défaut si non trouvée
+ * @return mixed Valeur de la variable
+ * 
+ * @example $userName = get('userName');
+ * @example $config = get('config', []);
+ */
+function get($name, $default = null) {
+    return $GLOBALS[$name] ?? $default;
+}
+
+/**
+ * Vérifier si une variable partagée existe
+ * 
+ * @param string $name Nom de la variable
+ * @return bool
+ * 
+ * @example if (has('userName')) { ... }
+ */
+function has($name) {
+    return isset($GLOBALS[$name]);
+}
+
+/**
+ * Définir plusieurs variables en une seule fois
+ * 
+ * @param array $vars Tableau associatif [nom => valeur]
+ * 
+ * @example setMany(['user' => 'John', 'age' => 25]);
+ */
+function setMany(array $vars) {
+    foreach ($vars as $name => $value) {
+        $GLOBALS[$name] = $value;
+    }
+}
+
+/**
+ * ============================================================================
+ * FIN DES FONCTIONS HELPERS
+ * ============================================================================
+ */
+
+/**
+ * LA FONCTION POUR GERER LES ERREURS - VERSION AMÉLIORÉE
+ * 
+ * Gestion centralisée des erreurs avec logging automatique
+ * Respecte DEBUG_MODE pour l'affichage des détails
+ * 
+ * @param Exception $e L'exception capturée
+ * @param int $httpCode Code HTTP à retourner (par défaut 500)
+ * @param string $customMessage Message personnalisé (optionnel)
+ * @return string Réponse JSON formatée
+ */
+function getError($e, $httpCode = 500, $customMessage = null) {
+    $debugMode = env('DEBUG_MODE') === 'true' || env('DEBUG_MODE') === true;
+    
+    // Logger l'erreur avec timestamp
+    $logMessage = sprintf(
+        "[%s] ERROR [%d]: %s in %s:%d",
+        date('Y-m-d H:i:s'),
+        $httpCode,
+        $e->getMessage(),
+        $e->getFile(),
+        $e->getLine()
+    );
+    error_log($logMessage);
+    
+    // Préparer les données de debug si nécessaire
+    $debugData = null;
+    if ($debugMode) {
+        $debugData = [
+            'error' => $e->getMessage(),
+            'file' => basename($e->getFile()),
+            'line' => $e->getLine(),
+            'type' => get_class($e)
+        ];
+    }
+    
+    // Utiliser le message personnalisé ou celui par défaut
+    $message = $customMessage ?: null;
+    
+    return api_response($httpCode, $message, $debugData);
+}
+
+/**
+ * Fonction helper pour logger des messages personnalisés
+ * 
+ * @param string $message Message à logger
+ * @param string $level Niveau: 'INFO', 'WARNING', 'ERROR', 'DEBUG'
+ */
+function logMessage($message, $level = 'INFO') {
+    $timestamp = date('Y-m-d H:i:s');
+    $logEntry = "[{$timestamp}] [{$level}] {$message}";
+    error_log($logEntry);
 }
 
 /**

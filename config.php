@@ -165,10 +165,13 @@ if (!function_exists('getallheaders')) {
  * 
  * 
  * Récupération automatique du token JWT
- * 
+ * Note: Utilisation de $GLOBALS pour garantir l'accès depuis les routes
+ * NE PAS écraser cette variable dans vos routes !
  * 
  */
-$GLOBALS['JWT_HTTP_TOKEN'] = getAuthToken();
+if (!isset($GLOBALS['JWT_HTTP_TOKEN'])) {
+    $GLOBALS['JWT_HTTP_TOKEN'] = getAuthToken();
+}
 
 /**
  * 
@@ -204,5 +207,56 @@ define('BASE_APP_DIR',''); // Laisser vide pour InfinityFree
  */
 define('API_TOKEN_SECRET','Exemple_key');
 define('API_TOKEN_EXP',2592000); 
+
+/**
+ * =============================================================
+ * 🚫 VARIABLES RÉSERVÉES DU SYSTÈME - NE PAS UTILISER
+ * =============================================================
+ * 
+ * Liste des noms de variables réservées par StructureOne.
+ * N'utilisez JAMAIS ces noms dans vos fichiers de routes !
+ * 
+ * Toutes les variables système sont préfixées par: $_so_
+ * 
+ * Variables réservées dans index.php (routeur principal):
+ * - $_so_requestUri      : URI de la requête en cours
+ * - $_so_requestMethod   : Méthode HTTP (GET, POST, etc.)
+ * - $_so_routeName       : Nom de la route (système legacy)
+ * - $_so_routeInfo       : Informations de la route (avec version)
+ * - $_so_loadResult      : Résultat du chargement de la route
+ * - $_so_errorData       : Données d'erreur en cas d'échec
+ * 
+ * Variables réservées dans loader.php (fonctions de chargement):
+ * - $_so_loadedFiles     : Liste des fichiers chargés
+ * - $_so_files           : Fichiers scannés dans le dossier
+ * - $_so_phpFiles        : Fichiers PHP détectés
+ * - $_so_priorityFiles   : Fichiers prioritaires (functions.php)
+ * - $_so_otherFiles      : Autres fichiers PHP
+ * - $_so_sortedFiles     : Fichiers triés pour chargement
+ * - $_so_file            : Fichier en cours de traitement
+ * - $_so_filePath        : Chemin complet du fichier
+ * 
+ * Variables globales:
+ * - $GLOBALS['JWT_HTTP_TOKEN'] : Token JWT depuis le header Authorization
+ * 
+ * RECOMMANDATION:
+ * Dans vos routes, utilisez des noms de variables descriptifs et explicites
+ * qui ne risquent pas de conflits, par exemple:
+ * - $userData, $userInput, $dbResult, $apiResponse, etc.
+ * 
+ * Évitez les noms génériques comme: $data, $result, $response, $request
+ * 
+ */
+define('STRUCTUREONE_RESERVED_VARS', [
+    // Variables routeur
+    '$_so_requestUri', '$_so_requestMethod', '$_so_routeName', 
+    '$_so_routeInfo', '$_so_loadResult', '$_so_errorData',
+    // Variables loader
+    '$_so_loadedFiles', '$_so_files', '$_so_phpFiles', 
+    '$_so_priorityFiles', '$_so_otherFiles', '$_so_sortedFiles',
+    '$_so_file', '$_so_filePath',
+    // Variables globales
+    'JWT_HTTP_TOKEN'
+]);
 
 ?>
